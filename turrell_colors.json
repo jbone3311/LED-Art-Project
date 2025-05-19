@@ -1,0 +1,14 @@
+[
+  {"name": "Turrell Blue", "color": [0, 51, 153]},
+  {"name": "Sky Blue", "color": [135, 206, 235]},
+  {"name": "Deep Violet", "color": [54, 0, 88]},
+  {"name": "Sunset Orange", "color": [255, 94, 77]},
+  {"name": "Rose Pink", "color": [255, 102, 178]},
+  {"name": "Lime Green", "color": [153, 255, 51]},
+  {"name": "Turrell White", "color": [255, 255, 255]},
+  {"name": "Shadow Grey", "color": [60, 60, 60]},
+  {"name": "Aqua Glow", "color": [0, 255, 255]},
+  {"name": "Amber Gold", "color": [255, 191, 0]},
+  {"name": "Lavender Mist", "color": [181, 126, 220]},
+  {"name": "Turrell Red", "color": [255, 0, 56]}
+] 

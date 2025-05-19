@@ -2,15 +2,160 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>LED Control</title>
+    <title>LED Art Control</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: sans-serif; margin: 2em; background: #181a1b; color: #eee; }
+        .panel { background: #23272a; padding: 2em; border-radius: 1em; max-width: 600px; margin: auto; }
+        h1 { text-align: center; }
+        label { display: block; margin-top: 1em; }
+        select, button, input[type=color], input[type=number], input[type=text] { margin-top: 0.5em; width: 100%; padding: 0.5em; border-radius: 0.5em; border: none; }
+        .actions { display: flex; gap: 1em; margin-top: 1em; }
+        .actions button { flex: 1; }
+        .desc { font-size: 0.95em; color: #b0b0b0; margin-bottom: 1em; }
+        .settings { margin-top: 2em; background: #202225; padding: 1em; border-radius: 0.5em; }
+        .tabs { display: flex; margin-bottom: 1em; }
+        .tab { flex: 1; padding: 1em; background: #202225; color: #eee; text-align: center; cursor: pointer; border-radius: 0.5em 0.5em 0 0; }
+        .tab.active { background: #2c2f33; font-weight: bold; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .progress-bar-bg { background: #444; border-radius: 0.5em; height: 1.2em; margin: 0.5em 0; }
+        .progress-bar { background: #4e9cff; height: 100%; border-radius: 0.5em; transition: width 0.3s; }
+        .status-row { display: flex; justify-content: space-between; }
+        .playground-section { margin-top: 2em; }
+        .feedback { margin-top: 1em; color: #ffb347; font-size: 1em; }
+    </style>
 </head>
 <body>
-    <h1>LED Control</h1>
-    <label for="colorPicker">Choose color:</label>
-    <input type="color" id="colorPicker">
-    <button onclick="sendColor()">Set Color</button>
+    <div class="panel">
+        <h1>LED Art Control</h1>
+        <div class="tabs">
+            <div class="tab active" id="tabShow" onclick="showTab('show')">Show Control</div>
+            <div class="tab" id="tabPlayground" onclick="showTab('playground')">Playground</div>
+        </div>
+        <div class="tab-content active" id="showTabContent">
+            <div id="statusDisplay">
+                <div class="status-row">
+                    <span><b>Now:</b> <span id="currentEffect">Idle</span></span>
+                    <span id="progressText"></span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar" id="progressBar" style="width:0%"></div>
+                </div>
+            </div>
+            <label for="sceneSelect">Available Shows:</label>
+            <select id="sceneSelect"></select>
+            <div class="desc" id="sceneDesc"></div>
+            <div class="actions">
+                <button onclick="playScene()">Play</button>
+                <button onclick="refreshScenes()">Refresh</button>
+            </div>
+            <label for="colorPicker">Quick Color:</label>
+            <div style="display:flex; gap:0.5em; align-items:center;">
+                <input type="color" id="colorPicker" style="flex:1;">
+                <select id="turrellColorDropdown" style="flex:2;"></select>
+            </div>
+            <button onclick="sendColor()">Set Color</button>
+            <div class="actions">
+                <button onclick="turnOff()">Turn Off LEDs</button>
+                <button onclick="exitServer()">Exit</button>
+            </div>
+            <div class="settings">
+                <strong>Settings (future):</strong>
+                <div>Brightness, speed, and more coming soon.</div>
+            </div>
+            <div class="actions">
+                <button onclick="showHelp('effects')">Help: Effects</button>
+                <button onclick="showHelp('transitions')">Help: Transitions</button>
+            </div>
+        </div>
+        <div class="tab-content" id="playgroundTabContent">
+            <h2>Effect & Transition Playground</h2>
+            <div class="playground-section">
+                <label for="effectDropdown">Effect:</label>
+                <select id="effectDropdown"></select>
+                <form id="effectForm"></form>
+                <div class="feedback" id="effectFeedback"></div>
+            </div>
+        </div>
+    </div>
+    <!-- Add modal for help -->
+    <div id="helpModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:#23272a; color:#eee; padding:2em; border-radius:1em; max-width:500px; margin:auto; position:relative;">
+            <button onclick="closeHelp()" style="position:absolute; top:1em; right:1em; background:#444; color:#fff; border:none; border-radius:0.5em; padding:0.3em 0.7em;">X</button>
+            <div id="helpContent"></div>
+        </div>
+    </div>
     <script>
+        let scenes = [];
+        let effects = [
+            {name: 'solid', params: ['color', 'duration']},
+            {name: 'gradient', params: ['color_start', 'color_end', 'duration']},
+            {name: 'breathing', params: ['base_color', 'cycle_s', 'duration']},
+            {name: 'pulse', params: ['color', 'speed', 'width_px', 'duration']},
+            {name: 'strobe', params: ['color', 'duty_cycle', 'tempo', 'duration']},
+            {name: 'chase', params: ['color', 'speed', 'duration']}
+        ];
+        let turrellColors = [];
+        function showTab(tab) {
+            document.getElementById('showTabContent').classList.toggle('active', tab==='show');
+            document.getElementById('playgroundTabContent').classList.toggle('active', tab==='playground');
+            document.getElementById('tabShow').classList.toggle('active', tab==='show');
+            document.getElementById('tabPlayground').classList.toggle('active', tab==='playground');
+        }
+        function loadScenes() {
+            fetch('/scenes').then(r => r.json()).then(data => {
+                scenes = data;
+                const sel = document.getElementById('sceneSelect');
+                sel.innerHTML = '';
+                data.forEach((scene, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = scene.filename;
+                    opt.textContent = scene.name;
+                    sel.appendChild(opt);
+                });
+                showDesc();
+            });
+        }
+        function showDesc() {
+            const sel = document.getElementById('sceneSelect');
+            const idx = sel.selectedIndex;
+            document.getElementById('sceneDesc').textContent = scenes[idx]?.description || '';
+        }
+        function playScene() {
+            const sel = document.getElementById('sceneSelect');
+            const filename = sel.value;
+            fetch('/apply_scene_file', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filename })
+            });
+        }
+        function refreshScenes() { loadScenes(); }
+        function loadTurrellColors() {
+            fetch('/static/turrell_colors.json').then(r => r.json()).then(data => {
+                turrellColors = data;
+                const sel = document.getElementById('turrellColorDropdown');
+                sel.innerHTML = '';
+                data.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = JSON.stringify(c.color);
+                    opt.textContent = c.name;
+                    sel.appendChild(opt);
+                });
+                sel.onchange = function() {
+                    const rgb = JSON.parse(sel.value);
+                    document.getElementById('colorPicker').value = rgbToHex(rgb);
+                };
+            });
+        }
+        function rgbToHex(rgb) {
+            return '#' + rgb.map(x => x.toString(16).padStart(2, '0')).join('');
+        }
+        function hexToRgb(hex) {
+            hex = hex.replace('#','');
+            return [parseInt(hex.substr(0,2),16),parseInt(hex.substr(2,2),16),parseInt(hex.substr(4,2),16)];
+        }
         function sendColor() {
             const color = document.getElementById('colorPicker').value;
             const r = parseInt(color.substr(1,2), 16);
@@ -22,6 +167,160 @@
                 body: JSON.stringify({ color: [r, g, b] })
             });
         }
+        function turnOff() {
+            fetch('/off', { method: 'POST' });
+        }
+        function exitServer() {
+            fetch('/exit', { method: 'POST' });
+        }
+        // Status polling
+        function pollStatus() {
+            fetch('/status').then(r => r.json()).then(data => {
+                const s = data;
+                document.getElementById('currentEffect').textContent = s.current_effect ? `${s.current_effect} (${s.current_transition})` : (s.running ? 'Running...' : 'Idle');
+                let pct = 0;
+                if (s.running && s.total_steps > 0) {
+                    pct = Math.round(100 * (s.step-1) / s.total_steps);
+                }
+                document.getElementById('progressBar').style.width = pct + '%';
+                let text = '';
+                if (s.running) {
+                    text = `Step ${s.step}/${s.total_steps} | Elapsed: ${s.elapsed}s`;
+                    if (s.duration) text += ` / ~${s.duration}s`;
+                }
+                document.getElementById('progressText').textContent = text;
+            });
+        }
+        setInterval(pollStatus, 1000);
+        // Playground
+        function renderEffectDropdown() {
+            const sel = document.getElementById('effectDropdown');
+            sel.innerHTML = '';
+            effects.forEach(eff => {
+                const opt = document.createElement('option');
+                opt.value = eff.name;
+                opt.textContent = eff.name;
+                sel.appendChild(opt);
+            });
+            sel.onchange = renderEffectForm;
+            renderEffectForm();
+        }
+        function renderEffectForm() {
+            const sel = document.getElementById('effectDropdown');
+            const eff = effects.find(e => e.name === sel.value);
+            const form = document.getElementById('effectForm');
+            form.innerHTML = '';
+            if (!eff) return;
+            eff.params.forEach(param => {
+                const label = document.createElement('label');
+                label.textContent = param;
+                form.appendChild(label);
+                if (param.includes('color')) {
+                    const colorDiv = document.createElement('div');
+                    colorDiv.style.display = 'flex';
+                    colorDiv.style.gap = '0.5em';
+                    colorDiv.style.alignItems = 'center';
+                    const colorInput = document.createElement('input');
+                    colorInput.type = 'color';
+                    colorInput.value = '#ffffff';
+                    colorInput.style.flex = '1';
+                    colorInput.id = param + '_picker';
+                    const colorSel = document.createElement('select');
+                    colorSel.style.flex = '2';
+                    turrellColors.forEach(c => {
+                        const opt = document.createElement('option');
+                        opt.value = JSON.stringify(c.color);
+                        opt.textContent = c.name;
+                        colorSel.appendChild(opt);
+                    });
+                    colorSel.onchange = function() {
+                        const rgb = JSON.parse(colorSel.value);
+                        colorInput.value = rgbToHex(rgb);
+                    };
+                    colorDiv.appendChild(colorInput);
+                    colorDiv.appendChild(colorSel);
+                    form.appendChild(colorDiv);
+                } else {
+                    let input = document.createElement('input');
+                    if (param.includes('duration') || param.includes('speed') || param.includes('cycle') || param.includes('width') || param.includes('step') || param.includes('min_b') || param.includes('max_b') || param.includes('jitter')) {
+                        input.type = 'number';
+                        input.step = 'any';
+                    } else {
+                        input.type = 'text';
+                    }
+                    input.name = param;
+                    form.appendChild(input);
+                }
+            });
+            const runBtn = document.createElement('button');
+            runBtn.type = 'submit';
+            runBtn.textContent = 'Run';
+            form.appendChild(runBtn);
+            form.onsubmit = function(e) {
+                e.preventDefault();
+                const params = {};
+                eff.params.forEach(param => {
+                    if (param.includes('color')) {
+                        const colorVal = form.querySelector('#'+param+'_picker').value;
+                        params[param] = hexToRgb(colorVal);
+                    } else {
+                        let val = form[param].value;
+                        if (param.includes('duration') || param.includes('speed') || param.includes('cycle') || param.includes('width') || param.includes('step') || param.includes('min_b') || param.includes('max_b') || param.includes('jitter')) {
+                            val = parseFloat(val);
+                        }
+                        params[param] = val;
+                    }
+                });
+                document.getElementById('effectFeedback').textContent = 'Running...';
+                fetch('/run_effect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ effect: eff.name, params })
+                })
+                .then(r => r.json())
+                .then(resp => {
+                    document.getElementById('effectFeedback').textContent = resp.status || resp.error || '';
+                })
+                .catch(() => {
+                    document.getElementById('effectFeedback').textContent = 'Error running effect.';
+                });
+            };
+        }
+        document.getElementById('sceneSelect').addEventListener('change', showDesc);
+        // Help modal logic
+        function showHelp(type) {
+            let html = '';
+            if (type === 'effects') {
+                html = `<h2>Effects</h2><ul>
+                    <li><b>solid</b>: Show a single color for a set duration.</li>
+                    <li><b>gradient</b>: Smoothly blend from one color to another across the strip.</li>
+                    <li><b>breathing</b>: Sine-wave brightness pulsing of a color.</li>
+                    <li><b>pulse</b>: A moving bright spot of color.</li>
+                    <li><b>strobe</b>: Rapid flashing of a color.</li>
+                    <li><b>chase</b>: A single moving pixel of color.</li>
+                </ul>`;
+            } else if (type === 'transitions') {
+                html = `<h2>Transitions</h2><ul>
+                    <li><b>fade</b>: Cross-fade between colors.</li>
+                    <li><b>instant</b>: No transition, hard cut.</li>
+                    <li><b>wave</b>: Sinusoidal wave transition between colors.</li>
+                    <li><b>middle-out</b>: Color radiates from the center outwards.</li>
+                    <li><b>random_shimmer</b>: Adds noise during fade for a shimmering effect.</li>
+                    <li><b>patterned_fade</b>: Steps through a palette of colors.</li>
+                    <li><b>brightness_sweep</b>: Global brightness ramp up or down.</li>
+                </ul>`;
+            }
+            document.getElementById('helpContent').innerHTML = html;
+            document.getElementById('helpModal').style.display = 'flex';
+        }
+        function closeHelp() {
+            document.getElementById('helpModal').style.display = 'none';
+        }
+        window.onload = function() {
+            loadScenes();
+            loadTurrellColors();
+            renderEffectDropdown();
+        };
     </script>
 </body>
 </html>

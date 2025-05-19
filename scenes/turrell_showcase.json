@@ -1,0 +1,63 @@
+{
+  "name": "James Turrell Showcase",
+  "description": "A meditative sequence inspired by Turrell's Skyspace, Roden Crater, and Ganzfeld works, demonstrating all effects and transitions.",
+  "steps": [
+    {
+      "effect": "solid",
+      "color": [80, 120, 255],
+      "duration": 10,
+      "transition": "fade",
+      "transition_duration": 4
+    },
+    {
+      "effect": "gradient",
+      "color_start": [80, 120, 255],
+      "color_end": [255, 180, 220],
+      "duration": 12,
+      "transition": "wave",
+      "transition_duration": 5
+    },
+    {
+      "effect": "breathing",
+      "base_color": [255, 180, 220],
+      "cycle_s": 60,
+      "duration": 20,
+      "transition": "brightness_sweep",
+      "transition_duration": 6
+    },
+    {
+      "effect": "pulse",
+      "color": [255, 90, 40],
+      "speed": 30,
+      "width_px": 12,
+      "duration": 15,
+      "transition": "middle-out",
+      "transition_duration": 5
+    },
+    {
+      "effect": "strobe",
+      "color": [255, 255, 255],
+      "duty_cycle": 0.1,
+      "tempo": 0.2,
+      "duration": 8,
+      "transition": "random_shimmer",
+      "transition_duration": 3
+    },
+    {
+      "effect": "chase",
+      "color": [120, 255, 180],
+      "speed": 1,
+      "duration": 12,
+      "transition": "patterned_fade",
+      "palette": [
+        [80, 120, 255],
+        [255, 180, 220],
+        [255, 90, 40],
+        [120, 255, 180]
+      ],
+      "step_s": 2,
+      "transition_duration": 6
+    }
+  ],
+  "last": [0, 0, 0]
+} 

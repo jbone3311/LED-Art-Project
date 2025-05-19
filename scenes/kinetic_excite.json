@@ -1,0 +1,58 @@
+{
+  "name": "Kinetic Excite",
+  "description": "A rapid, energetic, and thoughtful show with quick transitions, bold color changes, and dynamic effects for a more kinetic experience.",
+  "steps": [
+    {
+      "effect": "strobe",
+      "color": [255, 40, 40],
+      "duty_cycle": 0.2,
+      "tempo": 8,
+      "duration": 4,
+      "transition": "instant"
+    },
+    {
+      "effect": "chase",
+      "color": [40, 255, 80],
+      "speed": 12,
+      "duration": 5,
+      "transition": "wave",
+      "transition_duration": 1.5
+    },
+    {
+      "effect": "pulse",
+      "color": [40, 120, 255],
+      "speed": 25,
+      "width_px": 8,
+      "duration": 4,
+      "transition": "patterned_fade",
+      "palette": [[255,255,0],[0,255,255],[255,0,255]],
+      "step_s": 0.5,
+      "transition_duration": 2
+    },
+    {
+      "effect": "breathing",
+      "base_color": [255, 80, 180],
+      "cycle_s": 2,
+      "duration": 6,
+      "transition": "random_shimmer",
+      "jitter_pct": 0.1,
+      "transition_duration": 1.5
+    },
+    {
+      "effect": "gradient",
+      "color_start": [255, 255, 255],
+      "color_end": [0, 0, 0],
+      "duration": 2,
+      "transition": "middle-out",
+      "transition_duration": 1
+    },
+    {
+      "effect": "solid",
+      "color": [0, 0, 0],
+      "duration": 1,
+      "transition": "fade",
+      "transition_duration": 1
+    }
+  ],
+  "last": [0, 0, 0]
+} 
