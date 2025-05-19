@@ -1,0 +1,63 @@
+{
+  "name": "Colorfield Poem",
+  "description": "A poetic sequence, each step a stanza in color and light.",
+  "narrative_intro": "Let this show be a poem in color. Each step is a stanza, a feeling, a moment.",
+  "steps": [
+    {
+      "effect": "solid",
+      "color": [255, 102, 178],
+      "duration": 8,
+      "transition": "fade",
+      "transition_duration": 3,
+      "narrative": "Pink: a stanza of hope, soft and bright."
+    },
+    {
+      "effect": "gradient",
+      "color_start": [255, 102, 178],
+      "color_end": [255, 191, 0],
+      "duration": 10,
+      "transition": "wave",
+      "transition_duration": 4,
+      "narrative": "Pink flows to gold, a line of joy."
+    },
+    {
+      "effect": "breathing",
+      "base_color": [0, 255, 255],
+      "cycle_s": 6,
+      "duration": 12,
+      "transition": "brightness_sweep",
+      "transition_duration": 3,
+      "narrative": "Aqua breathes, a stanza of calm."
+    },
+    {
+      "effect": "pulse",
+      "color": [54, 0, 88],
+      "speed": 8,
+      "width_px": 10,
+      "duration": 9,
+      "transition": "patterned_fade",
+      "palette": [[255, 102, 178], [255, 191, 0], [0, 255, 255], [54, 0, 88]],
+      "step_s": 2,
+      "transition_duration": 3,
+      "narrative": "Violet pulses, a line of mystery."
+    },
+    {
+      "effect": "chase",
+      "color": [255, 191, 0],
+      "speed": 7,
+      "duration": 8,
+      "transition": "random_shimmer",
+      "transition_duration": 2,
+      "narrative": "Gold chases, a stanza of energy."
+    },
+    {
+      "effect": "solid",
+      "color": [255, 255, 255],
+      "duration": 6,
+      "transition": "fade",
+      "transition_duration": 3,
+      "narrative": "White: the poem ends in clarity."
+    }
+  ],
+  "last": [0, 0, 0]
+} 

@@ -1,0 +1,65 @@
+{
+  "name": "Aurora Journey",
+  "description": "A magical trip beneath the aurora, with shifting colors and flowing effects.",
+  "narrative_intro": "Travel beneath the aurora. Each step is a new wonder in the sky.",
+  "steps": [
+    {
+      "effect": "gradient",
+      "color_start": [0, 51, 153],
+      "color_end": [0, 255, 255],
+      "duration": 10,
+      "transition": "fade",
+      "transition_duration": 3,
+      "narrative": "Blue and aqua sweep across the sky, the aurora begins."
+    },
+    {
+      "effect": "breathing",
+      "base_color": [181, 126, 220],
+      "cycle_s": 7,
+      "duration": 12,
+      "transition": "wave",
+      "transition_duration": 4,
+      "narrative": "Lavender pulses gently, shimmering in the cold air."
+    },
+    {
+      "effect": "chase",
+      "color": [153, 255, 51],
+      "speed": 7,
+      "duration": 10,
+      "transition": "patterned_fade",
+      "palette": [[0, 255, 255], [153, 255, 51], [181, 126, 220]],
+      "step_s": 2,
+      "transition_duration": 3,
+      "narrative": "Green lights chase each other, dancing in the night."
+    },
+    {
+      "effect": "pulse",
+      "color": [255, 255, 255],
+      "speed": 12,
+      "width_px": 14,
+      "duration": 8,
+      "transition": "random_shimmer",
+      "transition_duration": 2,
+      "narrative": "A white pulse, like a shooting star, crosses the sky."
+    },
+    {
+      "effect": "strobe",
+      "color": [255, 0, 56],
+      "duty_cycle": 0.12,
+      "tempo": 5,
+      "duration": 6,
+      "transition": "middle-out",
+      "transition_duration": 2,
+      "narrative": "Red flashes burst, echoing the aurora's wildest moments."
+    },
+    {
+      "effect": "solid",
+      "color": [0, 0, 0],
+      "duration": 6,
+      "transition": "fade",
+      "transition_duration": 3,
+      "narrative": "The sky returns to black, the journey complete."
+    }
+  ],
+  "last": [0, 0, 0]
+} 

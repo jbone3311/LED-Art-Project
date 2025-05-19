@@ -1,6 +1,7 @@
 {
   "name": "Kinetic Excite",
   "description": "A rapid, energetic, and thoughtful show with quick transitions, bold color changes, and dynamic effects for a more kinetic experience.",
+  "narrative_intro": "Kinetic Excite is a story of energy, movement, and surprise. Each step is a burst of life, a dance of light.",
   "steps": [
     {
       "effect": "strobe",
@@ -8,7 +9,8 @@
       "duty_cycle": 0.2,
       "tempo": 8,
       "duration": 4,
-      "transition": "instant"
+      "transition": "instant",
+      "narrative": "A flash of red, like a starting gun, launches the kinetic journey."
     },
     {
       "effect": "chase",
@@ -16,7 +18,8 @@
       "speed": 12,
       "duration": 5,
       "transition": "wave",
-      "transition_duration": 1.5
+      "transition_duration": 1.5,
+      "narrative": "Green energy races down the line, a comet in motion."
     },
     {
       "effect": "pulse",
@@ -27,7 +30,8 @@
       "transition": "patterned_fade",
       "palette": [[255,255,0],[0,255,255],[255,0,255]],
       "step_s": 0.5,
-      "transition_duration": 2
+      "transition_duration": 2,
+      "narrative": "Blue pulses ripple, shifting through a spectrum of surprise."
     },
     {
       "effect": "breathing",
@@ -36,7 +40,8 @@
       "duration": 6,
       "transition": "random_shimmer",
       "jitter_pct": 0.1,
-      "transition_duration": 1.5
+      "transition_duration": 1.5,
+      "narrative": "Pink breathes in and out, a moment of anticipation."
     },
     {
       "effect": "gradient",
@@ -44,14 +49,16 @@
       "color_end": [0, 0, 0],
       "duration": 2,
       "transition": "middle-out",
-      "transition_duration": 1
+      "transition_duration": 1,
+      "narrative": "A white-to-black gradient, like a curtain falling."
     },
     {
       "effect": "solid",
       "color": [0, 0, 0],
       "duration": 1,
       "transition": "fade",
-      "transition_duration": 1
+      "transition_duration": 1,
+      "narrative": "The lights fade to black. The kinetic story ends."
     }
   ],
   "last": [0, 0, 0]

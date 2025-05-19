@@ -1,13 +1,15 @@
 {
   "name": "Turrell Meditation",
   "description": "A 10-minute, thoughtful, meditative sequence inspired by James Turrell. Long fades, gentle breathing, and slow gradients in Turrell-inspired colors.",
+  "narrative_intro": "Turrell Meditation is a slow, contemplative journey. Let the colors and transitions guide your breath and mind.",
   "steps": [
     {
       "effect": "solid",
       "color": [80, 120, 255],
       "duration": 60,
       "transition": "fade",
-      "transition_duration": 10
+      "transition_duration": 10,
+      "narrative": "A long blue moment, inviting calm and focus."
     },
     {
       "effect": "gradient",
@@ -15,7 +17,8 @@
       "color_end": [255, 180, 220],
       "duration": 90,
       "transition": "wave",
-      "transition_duration": 12
+      "transition_duration": 12,
+      "narrative": "Blue melts into pink, like a sky at dusk."
     },
     {
       "effect": "breathing",
@@ -25,14 +28,16 @@
       "transition": "brightness_sweep",
       "min_b": 8,
       "max_b": 20,
-      "transition_duration": 10
+      "transition_duration": 10,
+      "narrative": "The light breathes, slow and gentle, in a pink haze."
     },
     {
       "effect": "solid",
       "color": [255, 90, 40],
       "duration": 60,
       "transition": "middle-out",
-      "transition_duration": 8
+      "transition_duration": 8,
+      "narrative": "Orange glows, a moment of warmth and energy."
     },
     {
       "effect": "gradient",
@@ -42,7 +47,8 @@
       "transition": "patterned_fade",
       "palette": [[255, 90, 40], [255, 180, 220], [120, 255, 180], [80, 120, 255]],
       "step_s": 10,
-      "transition_duration": 12
+      "transition_duration": 12,
+      "narrative": "Orange fades to green, a gentle return to earth."
     },
     {
       "effect": "breathing",
@@ -51,14 +57,16 @@
       "duration": 120,
       "transition": "random_shimmer",
       "jitter_pct": 0.03,
-      "transition_duration": 10
+      "transition_duration": 10,
+      "narrative": "Green breathes, slow and deep, like a field at dawn."
     },
     {
       "effect": "solid",
       "color": [0, 0, 0],
       "duration": 30,
       "transition": "fade",
-      "transition_duration": 10
+      "transition_duration": 10,
+      "narrative": "Darkness returns, the meditation complete."
     }
   ],
   "last": [0, 0, 0]

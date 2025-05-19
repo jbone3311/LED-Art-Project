@@ -43,6 +43,7 @@
                     <div class="progress-bar" id="progressBar" style="width:0%"></div>
                 </div>
             </div>
+            <div id="narrativeText" class="desc" style="min-height:2em;"></div>
             <label for="sceneSelect">Available Shows:</label>
             <select id="sceneSelect"></select>
             <div class="desc" id="sceneDesc"></div>
@@ -189,6 +190,7 @@
                     if (s.duration) text += ` / ~${s.duration}s`;
                 }
                 document.getElementById('progressText').textContent = text;
+                document.getElementById('narrativeText').textContent = s.narrative || '';
             });
         }
         setInterval(pollStatus, 1000);

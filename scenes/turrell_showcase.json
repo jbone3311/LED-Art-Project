@@ -1,13 +1,15 @@
 {
   "name": "James Turrell Showcase",
   "description": "A meditative sequence inspired by Turrell's Skyspace, Roden Crater, and Ganzfeld works, demonstrating all effects and transitions.",
+  "narrative_intro": "Welcome to the James Turrell Showcase. This show guides you through a meditative journey of color, light, and perception, inspired by Turrell's iconic works.",
   "steps": [
     {
       "effect": "solid",
       "color": [80, 120, 255],
       "duration": 10,
       "transition": "fade",
-      "transition_duration": 4
+      "transition_duration": 4,
+      "narrative": "The sky opens in a tranquil blue, inviting you to breathe and settle."
     },
     {
       "effect": "gradient",
@@ -15,7 +17,8 @@
       "color_end": [255, 180, 220],
       "duration": 12,
       "transition": "wave",
-      "transition_duration": 5
+      "transition_duration": 5,
+      "narrative": "A gentle gradient flows, echoing the shifting light of dawn."
     },
     {
       "effect": "breathing",
@@ -23,7 +26,8 @@
       "cycle_s": 60,
       "duration": 20,
       "transition": "brightness_sweep",
-      "transition_duration": 6
+      "transition_duration": 6,
+      "narrative": "The space breathes with you, pulsing softly in pink."
     },
     {
       "effect": "pulse",
@@ -32,7 +36,8 @@
       "width_px": 12,
       "duration": 15,
       "transition": "middle-out",
-      "transition_duration": 5
+      "transition_duration": 5,
+      "narrative": "A pulse of orange radiates, like the sun cresting the horizon."
     },
     {
       "effect": "strobe",
@@ -41,7 +46,8 @@
       "tempo": 0.2,
       "duration": 8,
       "transition": "random_shimmer",
-      "transition_duration": 3
+      "transition_duration": 3,
+      "narrative": "A burst of white, shimmering and alive, disrupts the calm."
     },
     {
       "effect": "chase",
@@ -56,7 +62,8 @@
         [120, 255, 180]
       ],
       "step_s": 2,
-      "transition_duration": 6
+      "transition_duration": 6,
+      "narrative": "A playful chase of green closes the journey, returning you to stillness."
     }
   ],
   "last": [0, 0, 0]

@@ -1,0 +1,63 @@
+{
+  "name": "Storytime Dreams",
+  "description": "A whimsical bedtime story told in light, where each effect and color paints a new chapter.",
+  "narrative_intro": "Settle in for a bedtime story told in color and light. Each step is a new page in the dream.",
+  "steps": [
+    {
+      "effect": "solid",
+      "color": [60, 60, 120],
+      "duration": 8,
+      "transition": "fade",
+      "transition_duration": 3,
+      "narrative": "Once upon a time, the night sky settled in, deep and blue."
+    },
+    {
+      "effect": "breathing",
+      "base_color": [255, 180, 220],
+      "cycle_s": 8,
+      "duration": 12,
+      "transition": "wave",
+      "transition_duration": 4,
+      "narrative": "A gentle pink cloud drifted by, breathing softly."
+    },
+    {
+      "effect": "pulse",
+      "color": [255, 191, 0],
+      "speed": 10,
+      "width_px": 8,
+      "duration": 10,
+      "transition": "middle-out",
+      "transition_duration": 3,
+      "narrative": "A golden star shot across the sky, leaving a trail of wonder."
+    },
+    {
+      "effect": "gradient",
+      "color_start": [135, 206, 235],
+      "color_end": [181, 126, 220],
+      "duration": 10,
+      "transition": "patterned_fade",
+      "palette": [[135, 206, 235], [181, 126, 220], [255, 180, 220]],
+      "step_s": 2,
+      "transition_duration": 4,
+      "narrative": "The sky changed from blue to lavender, as dreams began to swirl."
+    },
+    {
+      "effect": "chase",
+      "color": [0, 255, 255],
+      "speed": 6,
+      "duration": 8,
+      "transition": "random_shimmer",
+      "transition_duration": 3,
+      "narrative": "A playful breeze chased the dreams around, shimmering with laughter."
+    },
+    {
+      "effect": "solid",
+      "color": [0, 0, 0],
+      "duration": 6,
+      "transition": "fade",
+      "transition_duration": 3,
+      "narrative": "And so, the world faded to black, and the dreamer slept soundly."
+    }
+  ],
+  "last": [0, 0, 0]
+} 

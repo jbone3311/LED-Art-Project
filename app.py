@@ -30,7 +30,8 @@ status = {
     'total_steps': 0,
     'elapsed': 0,
     'duration': 0,
-    'scene': None
+    'scene': None,
+    'narrative': None
 }
 
 status_lock = threading.Lock()
@@ -55,6 +56,7 @@ def run_scene_thread(scene_data):
             status['current_transition'] = step.get('transition', 'fade')
             status['elapsed'] = int(time.time() - start_time)
             status['duration'] = int(sum(s.get('duration', 2) + s.get('transition_duration', 0) for s in steps))
+            status['narrative'] = step.get('narrative', None)
         # Run transition
         if status['current_transition'] != 'instant':
             from_color = last
@@ -69,6 +71,7 @@ def run_scene_thread(scene_data):
         status['current_transition'] = None
         status['step'] = 0
         status['scene'] = None
+        status['narrative'] = None
 
 @app.route('/')
 def index():

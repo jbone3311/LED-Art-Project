@@ -1,0 +1,64 @@
+{
+  "name": "Urban Rhythm",
+  "description": "A night in the city, told through light: neon, traffic, quiet, and dawn.",
+  "narrative_intro": "Experience a night in the city, where every light tells a story.",
+  "steps": [
+    {
+      "effect": "strobe",
+      "color": [255, 0, 56],
+      "duty_cycle": 0.15,
+      "tempo": 6,
+      "duration": 6,
+      "transition": "instant",
+      "narrative": "Neon signs flicker to life, painting the night in red."
+    },
+    {
+      "effect": "chase",
+      "color": [255, 255, 255],
+      "speed": 10,
+      "duration": 8,
+      "transition": "wave",
+      "transition_duration": 2,
+      "narrative": "Headlights race down the avenue, white and bright."
+    },
+    {
+      "effect": "pulse",
+      "color": [255, 191, 0],
+      "speed": 8,
+      "width_px": 10,
+      "duration": 7,
+      "transition": "patterned_fade",
+      "palette": [[255, 191, 0], [255, 0, 56], [0, 255, 255]],
+      "step_s": 1.5,
+      "transition_duration": 3,
+      "narrative": "A yellow taxi pulses through the night, weaving between colors."
+    },
+    {
+      "effect": "breathing",
+      "base_color": [60, 60, 60],
+      "cycle_s": 6,
+      "duration": 10,
+      "transition": "random_shimmer",
+      "transition_duration": 2,
+      "narrative": "The city breathes, a moment of quiet in the grey."
+    },
+    {
+      "effect": "gradient",
+      "color_start": [60, 60, 120],
+      "color_end": [255, 191, 0],
+      "duration": 10,
+      "transition": "middle-out",
+      "transition_duration": 3,
+      "narrative": "Dawn approaches, blue fades to gold."
+    },
+    {
+      "effect": "solid",
+      "color": [255, 255, 255],
+      "duration": 5,
+      "transition": "fade",
+      "transition_duration": 2,
+      "narrative": "The city wakes, bathed in morning light."
+    }
+  ],
+  "last": [0, 0, 0]
+} 
