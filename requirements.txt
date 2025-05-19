@@ -1,2 +1,4 @@
+apa102-pi
+flask
 Pillow>=9.0.0
 pillow-heif>=0.7.0 
