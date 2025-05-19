@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "figma": {
+      "url": "https://mcp.cursor.so/figma"
+    },
+    "github": {
+      "url": "https://mcp.cursor.so/github"
+    },
+    "docker": {
+      "url": "https://mcp.cursor.so/docker"
+    },
+    "sequential-thinking": {
+      "url": "https://mcp.cursor.so/sequential-thinking"
+    },
+    "firecrawl": {
+      "url": "https://mcp.cursor.so/firecrawl"
+    },
+    "memory-bank": {
+      "url": "https://mcp.cursor.so/memory-bank"
+    },
+    "knowledge-graph": {
+      "url": "https://mcp.cursor.so/knowledge-graph"
+    }
+  }
+} 

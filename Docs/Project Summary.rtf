@@ -1,0 +1,121 @@
+### **Turrell-Style Light-Art Platform — *Simplified v0.9 Specification***
+
+*(Removes external APIs and any multi-Pi networking; keeps all single-box features and creative options.)*
+
+---
+
+## 1 System Snapshot
+
+| Layer        | Tech / Part                                                                                | What it Does                                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| **Hardware** | • Raspberry Pi Model B  • SK9822 144-pixel strip  • 74HCT125 level-shifter  • 5 V 60 W PSU | Clean 5 V logic, power injection every 0.5 m, 100 Ω data resistor, 1000 µF cap                       |
+| **Driver**   | `apa102-pi` *or* raw `spidev` (8-20 MHz)                                                   | Push RGB frames; optional 350 FPS diag loop                                                          |
+| **Runtime**  | **Single Python process** (`lightd.py`)                                                    | 1️⃣ LED render thread 2️⃣ effect/transition registry 3️⃣ built-in Flask+Socket.IO UI (internal only) |
+| **UI**       | Bootstrap + Vanilla JS                                                                     | Runs on the Pi at `http://<pi-ip>:5000`; phone-friendly sliders & buttons                            |
+| **Data**     | JSON scene files                                                                           | One file = one preset; LLM-friendly                                                                  |
+
+*No REST endpoint list, no OSC/MQTT, no multi-controller mesh.*
+
+---
+
+## 2 Effect Library (all available Day 1)
+
+| Effect        | Key Params (examples)               | Behaviour (slow, Turrell-friendly)                |
+| ------------- | ----------------------------------- | ------------------------------------------------- |
+| **Solid**     | `color`                             | Static field; HSV-space blend when colour changes |
+| **Gradient**  | `color_start, color_end, hue_space` | Smooth wall-to-wall sweep                         |
+| **Breathing** | `base_color, cycle_s (≥ 60 s)`      | Global sine-wave brightness                       |
+| **Pulse**     | `color, speed (≥ 30 s), width_px`   | Gentle travelling flash                           |
+| **Strobe**    | `color, duty_cycle, tempo`          | Very low duty; feels like perceptual flicker      |
+| **Chase**     | `color, speed=1 px / s`             | Slow drifting edge line                           |
+
+*Shared flags*: `tempo 0-1`, `easing` (linear, cosine, quad, cubic).
+*Master brightness envelope*: **8 – 20** (SK9822 global register).
+
+---
+
+## 3 Transition Library
+
+| Transition           | Params                          | Visual Idea                   |
+| -------------------- | ------------------------------- | ----------------------------- |
+| **Fade**             | `duration_s, easing`            | Whole-strip cross-fade        |
+| **Instant**          | –                               | Hard cut                      |
+| **Wave**             | `wavelength_px, speed`          | Sin-crest carries new hue     |
+| **Middle-Out**       | `duration_s`                    | Colour radiates from centre   |
+| **Random Shimmer**   | `jitter_pct ≤ 5`                | Atmospheric noise during fade |
+| **Patterned Fade**   | `palette[], step_s`             | Discrete pastel steps         |
+| **Brightness Sweep** | `min_b=8, max_b=20, duration_s` | Cosine global dimmer ramp     |
+
+**Standard signature**
+
+```python
+def transition(strip, start_px, end_px,
+               from_color, to_color, **kw): ...
+```
+
+---
+
+## 4 Runtime Structure
+
+```
+lightd.py
+├── registry.py         (EFFECTS, TRANSITIONS, register decorator)
+├── render.py           (LED thread, gamma LUT, brightness envelope)
+├── ui/
+│   ├── app.py          (Flask + Socket.IO)
+│   ├── templates/
+│   └── static/
+└── scenes/             (JSON presets)
+```
+
+* All modules live in one repo; run with `python lightd.py`.
+* **Hot-reload**: saving a file in `plugins/` auto-refreshes the registry (for live coding).
+* **Virtual segments**: helper creates `substrip(start, end)` views so multiple algorithms can run on slices.
+
+---
+
+## 5 UI Flow (no external API)
+
+1. **Scene Browser** – tap a card to play; long-press to duplicate/edit JSON.
+2. **Controls** – colour picker, brightness slider, tempo dial, effect & transition dropdowns.
+3. **Auto-Forms** – any extra `params` in the active effect appear as sliders/inputs.
+4. **Status Bar** – FPS, current scene, brightness %, estimated watts.
+5. **Code Lab** (optional tab) – Ace editor; save = hot-reload + toast “Reloaded plugins”.
+
+---
+
+## 6 Diagnostics & Safety
+
+* **Demo Slow-Mo**: checkbox multiplies all durations ×10 and overlays step counters.
+* **Watchdog**: if render loop > 2× frame interval, automatically black-out strip.
+* **Shutdown hook**: Ctrl-C or UI “Off” button clears LEDs and closes SPI cleanly.
+
+---
+
+## 7 Deployment Notes
+
+| Item                        | Setting                                                         |
+| --------------------------- | --------------------------------------------------------------- |
+| **OS image**                | Raspberry Pi OS Lite 64-bit                                     |
+| **Enable SPI**              | `raspi-config` → Interface → SPI                                |
+| **Optionally cap SPI core** | `dtoverlay=spi-frequency-set,core,600000` in */boot/config.txt* |
+| **Service**                 | simple `systemd` unit launching `python /home/pi/lightd.py`     |
+| **Back-ups**                | `~/light_scenes/` folder rsync’ed nightly; no database required |
+
+---
+
+## 8 Future (when ready)
+
+* REST/OSC endpoints
+* Multi-Pi mesh & synchronised shows
+* Home-Assistant / voice hooks
+* Timeline editor and sensor reactivity
+
+*(Left here only as placeholders; not implemented in v0.9)*
+
+---
+
+### **Summary**
+
+This trimmed-down spec keeps every creative effect, transition, tempo dial, live-coding pane, and safety measure—but **omits external APIs and multi-controller networking**. Everything runs on a single Pi, reachable at one local URL, perfect for getting the core Turrell experience working before you expand.
+{\rtf1}

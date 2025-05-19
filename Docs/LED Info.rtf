@@ -1,0 +1,124 @@
+Below is an updated, **Python-only** knowledge kit—trimmed to fit a Raspberry Pi Model B running Pi OS—and a crash-course on the best libraries, wiring, and SPI tuning tricks for your 144-pixel **SK9822** strip.
+
+[Download the Python-focused JSON pack](sandbox:/mnt/data/sk9822_python_only_rpi.json)
+
+---
+
+## At-a-glance summary
+
+With the Pi Model B you can drive the SK9822 at **8–20 MHz SPI** via `spidev` or the higher-level **apa102-pi** package, provided you add a **74HCT125 level shifter**, keep a **1000 µF cap** on the 5 V rail, and finish every frame with **(LEDs ÷ 2)+1 zero bytes**. Two code patterns cover 95 % of use-cases: a five-line apa102-pi “rainbow” loop for fast prototyping and a raw-`spidev` loop for maximum frame-rate control. ([GitHub][1], [Pi My Life Up][2], [Pololu][3], [Raspberry Pi Forums][4], [Raspberry Pi Forums][5], [Reddit][6], [Eckstein IMG][7], [Art Led Co.][8], [Amazon][9], [GitHub][10])
+
+---
+
+## 1. Library choices
+
+### apa102-pi
+
+Pure-Python, no C build step; supports SK9822 out of the box and exposes `global_brightness`, SPI speed, and color order knobs. Install with:
+
+```bash
+sudo pip install apa102-pi
+```
+
+The maintainer tags it as “feature-complete” but still merges bug-fix PRs. ([GitHub][1], [PyPI][11])
+
+### Pimoroni `apa102`
+
+An alternate driver that auto-falls back to GPIO bit-banging if SPI is busy—handy if you later reserve SPI0 for something else. ([GitHub][10], [PyPI][12])
+
+### Raw `spidev`
+
+Gives you the lowest overhead and lets you push >350 FPS on Model B by writing pre-built bytearrays. A full example is embedded in the JSON pack. ([Reddit][6])
+
+---
+
+## 2. Wiring & power quick-check
+
+| Strip lead       | Pi pin                     | Note                                                                          |
+| ---------------- | -------------------------- | ----------------------------------------------------------------------------- |
+| **Red (+5 V)**   | 5 V rail (via 60–75 W PSU) | Inject power every 0.5 m to avoid >0.5 V droop ([Pololu][3], [Amazon][9])     |
+| **Yellow (CLK)** | GPIO 11 (SCLK)             | Buffer through 74HCT125 ([Raspberry Pi Forums][4], [Raspberry Pi Forums][13]) |
+| **Green (DATA)** | GPIO 10 (MOSI)             | 100 Ω series resistor helps ringing ([Raspberry Pi Forums][13])               |
+| **Black (GND)**  | Any Pi GND                 | Share ground with PSU                                                         |
+
+Add a **≥1000 µF electrolytic** across 5 V/GND at the strip head for inrush damping. ([Pi My Life Up][2])
+
+---
+
+## 3. SPI tuning
+
+* Enable SPI with `sudo raspi-config` → Interfaces.
+* Cap the core clock if you see glitches on the original Model B:
+
+  ```text
+  dtoverlay=spi-frequency-set,core,600000
+  ```
+
+  brings the effective SPI ceiling to \~12 MHz. ([Raspberry Pi Forums][5])
+* Typical stable speeds on Model B rev 2 are **8–12 MHz**; some strips run happily at 20 MHz with very short leads and proper level shifting. ([Amazon][9], [Reddit][6])
+* Always finish a frame with **4 zero bytes + (N ÷ 2 + 1) zeros**; Pololu’s user guide details why this is needed for SK9822. ([Eckstein IMG][7], [Electronut Labs][14])
+
+---
+
+## 4. Essential Python snippets
+
+### apa102-pi rainbow
+
+```python
+from apa102_pi.driver import APA102
+import colorsys, time
+NUM = 144
+strip = APA102(num_led=NUM, global_brightness=31, spi_speed_hz=12000000)
+h = 0.0
+while True:
+    r,g,b = [int(c*255) for c in colorsys.hsv_to_rgb(h,1,1)]
+    for i in range(NUM):
+        strip.set_pixel(i, r, g, b)
+    strip.show()
+    h = (h + 0.002) % 1.0
+    time.sleep(0.01)
+```
+
+### Raw `spidev` high-speed loop
+
+(see JSON for complete listing with end-frame padding).
+
+---
+
+## 5. Best-practice checklist
+
+1. **Level-shift both CLK & DATA** (SK9822 inputs are 5 V-logic tolerant but marginal at 3 V). ([Raspberry Pi Forums][4], [Raspberry Pi Forums][13])
+2. **Use global brightness (5-bit) for master dimming** to retain color accuracy—keep it 8-20 for best results. ([Art Led Co.][8], [Pololu][3])
+3. **Twist signal with ground** and keep the run between Pi and first pixel <15 cm to hit 20 MHz. ([Amazon][9])
+4. **Capacitor + resistor**: 1000 µF filter plus 100 Ω on DATA curbs startup flash & ringing. ([Pi My Life Up][2], [Raspberry Pi Forums][13])
+5. **Pad frames** correctly to stop “last 2-3 LEDs lag” artifacts. ([Eckstein IMG][7])
+
+---
+
+## 6. Troubleshooting guide (excerpt)
+
+| Symptom                         | Likely cause                 | Fix                                                                                     |
+| ------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------- |
+| Only first pixel updates        | Missing/short end frame      | Use formula N ÷ 2 + 1 zeros, or lower SPI clock ([Eckstein IMG][7], [Pi My Life Up][2]) |
+| Random colour speckles          | Inadequate ground or 5 V sag | Inject power mid-strip; thicken 5 V/GND feeders ([Pololu][3])                           |
+| Colour shifts at low brightness | Globals below 8              | Keep global\_brightness ≥8 (or preload LUT) ([Art Led Co.][8])                          |
+| Rolling bands on camera         | 4.7 kHz PWM                  | Increase shutter speed / diffuse strip ([Art Led Co.][8])                               |
+
+---
+
+Everything above, plus both ready-to-run code blocks and installation commands, is bundled in the JSON download for easy ingestion into an LLM or automation script. Happy lighting!
+
+[1]: https://github.com/tinue/apa102-pi?utm_source=chatgpt.com "tinue/apa102-pi: Pure Python library to drive APA102 LED stripes"
+[2]: https://pimylifeup.com/raspberry-pi-led-strip-apa102/?utm_source=chatgpt.com "Raspberry Pi LED Strip using the APA102 - Pi My Life Up"
+[3]: https://www.pololu.com/product/3090?utm_source=chatgpt.com "Addressable RGB 120-LED Strip, 5V, 2m (SK9822) - Pololu"
+[4]: https://forums.raspberrypi.com/viewtopic.php?t=96500&utm_source=chatgpt.com "Breadboard-friendly logic level shifters with strong out"
+[5]: https://forums.raspberrypi.com/viewtopic.php?t=364051&utm_source=chatgpt.com "changing spi speed using the existing dtoverlay - Raspberry Pi Forums"
+[6]: https://www.reddit.com/r/homelab/comments/126l9x4/what_is_the_maximum_speed_of_spi_in_raspberry_pi/?utm_source=chatgpt.com "What is the maximum speed of SPI in Raspberry Pi 4B? - Reddit"
+[7]: https://ecksteinimg.de/Datasheet/Pololu/ledstrip_sk9822_userguide.pdf?utm_source=chatgpt.com "[PDF] USER GUIDE"
+[8]: https://www.artleds.com/blog/sk9822-a-clone-of-the-apa102?utm_source=chatgpt.com "SK9822 – A CLONE OF THE APA102? - Art LED"
+[9]: https://www.amazon.com/BTF-LIGHTING-Individually-Addressable-Non-Waterproof-Separately/dp/B07C979QJD?utm_source=chatgpt.com "BTF-LIGHTING SK9822(Similar to APA102C) Individually ..."
+[10]: https://github.com/pimoroni/apa102-python?utm_source=chatgpt.com "pimoroni/apa102-python - GitHub"
+[11]: https://pypi.org/project/apa102-pi/?utm_source=chatgpt.com "apa102-pi - PyPI"
+[12]: https://pypi.org/project/apa102/?utm_source=chatgpt.com "apa102 - PyPI"
+[13]: https://forums.raspberrypi.com/viewtopic.php?t=134266&utm_source=chatgpt.com "SPI and APA102 - Raspberry Pi Forums"
+[14]: https://electronut.in/driving-sk9822-leds-with-the-raspberry-pi-pico/?utm_source=chatgpt.com "Driving SK9822 LEDs with the Raspberry Pi Pico PIO - Electronut Labs"

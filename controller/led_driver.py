@@ -1,25 +1,22 @@
-from rpi_ws281x import PixelStrip, Color
+from apa102_pi.driver import APA102
 import time
 import math
 
-LED_COUNT = 60
-LED_PIN = 18
-LED_FREQ_HZ = 800000
-LED_DMA = 10
-LED_BRIGHTNESS = 255
-LED_INVERT = False
+LED_COUNT = 144
+GLOBAL_BRIGHTNESS = 31
+SPI_SPEED_HZ = 12000000
 
 strip = None
 
 def init_strip():
     global strip
-    strip = PixelStrip(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS)
-    strip.begin()
+    strip = APA102(num_led=LED_COUNT, global_brightness=GLOBAL_BRIGHTNESS, spi_speed_hz=SPI_SPEED_HZ)
     return strip
 
 def apply_color(strip, color):
-    for i in range(strip.numPixels()):
-        strip.setPixelColor(i, Color(*color))
+    r, g, b = color
+    for i in range(LED_COUNT):
+        strip.set_pixel(i, r, g, b)
     strip.show()
 
 def apply_fade(strip, start_color, end_color, duration):

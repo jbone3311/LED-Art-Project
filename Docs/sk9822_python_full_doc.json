@@ -1,0 +1,67 @@
+{
+  "metadata": {
+    "component": "BTF\u2011LIGHTING SK9822 144\u2011pixel LED strip",
+    "hardware": "Raspberry\u202fPi Model\u202fB (BCM2835/2836)",
+    "os": "Raspberry\u202fPi\u202fOS Bookworm (2025\u201104\u201104)",
+    "language": "Python\u00a03\u00a0(>=3.9)",
+    "protocol": "SPI \u2013 DATA=MOSI (GPIO\u202f10), CLK=SCLK (GPIO\u202f11)",
+    "updated": "2025-05-19"
+  },
+  "wiring": {
+    "strip_lead_colors": {
+      "+5V": "Red",
+      "CLK": "Yellow \u2192 GPIO\u00a011",
+      "DATA": "Green \u2192 GPIO\u00a010",
+      "GND": "Black \u2192 any Pi GND"
+    },
+    "level_shifter": "Recommended 74HCT125 or SN74AHCT125 between Pi (3\u202fV) and strip (5\u202fV)",
+    "capacitor": "\u22651000\u202f\u00b5F across 5\u202fV and GND at strip head"
+  },
+  "power_budget": {
+    "per_led_white_ma": 50,
+    "total_white_ma": 7200,
+    "suggested_psu": "5\u202fV 60\u201375\u202fW (12\u201315\u202fA) with power injection every 0.5\u202fm"
+  },
+  "spi": {
+    "device": "/dev/spidev0.0",
+    "default_speed_hz": 8000000,
+    "tested_speeds_hz": [
+      8000000,
+      12000000,
+      20000000
+    ],
+    "end_frame_rule": "bytes_required = len(pixels)//2 + 1"
+  },
+  "python_libraries": {
+    "apa102_pi": {
+      "install": "pip install apa102-pi",
+      "notes": "Pure Python; easy; supports brightness and color order"
+    },
+    "pimoroni_apa102": {
+      "install": "pip install apa102",
+      "notes": "Alternative by Pimoroni; auto\u2011falls back to GPIO bit\u2011bang if SPI busy"
+    },
+    "spidev_raw": {
+      "install": "pip install spidev",
+      "notes": "Lowest\u2011level; lets you craft frames manually at up to 20\u202fMHz"
+    }
+  },
+  "code_examples": {
+    "apa102_pi": "from apa102_pi.driver import APA102\nimport time, colorsys\nNUM = 144\nstrip = APA102(num_led=NUM, global_brightness=31, spi_speed_hz=12000000)\nhue = 0.0\nwhile True:\n    r,g,b = [int(c*255) for c in colorsys.hsv_to_rgb(hue,1,1)]\n    for i in range(NUM):\n        strip.set_pixel(i, r, g, b)\n    strip.show()\n    hue = (hue + 0.002) % 1.0\n    time.sleep(0.01)\n",
+    "spidev_raw": "import spidev, time, itertools, colorsys\nNUM = 144\nSTART = b'\\x00\\x00\\x00\\x00'\nEND = b'\\x00' * (NUM // 2 + 1)\nspi = spidev.SpiDev()\nspi.open(0,0)\nspi.max_speed_hz = 20000000\nspi.mode = 0\nhue = 0.0\nwhile True:\n    r,g,b = [int(c*255) for c in colorsys.hsv_to_rgb(hue,1,1)]\n    frame = bytes(itertools.chain.from_iterable(\n        (0xE0 | 31, b, g, r) for _ in range(NUM)\n    ))\n    spi.writebytes(START + frame + END)\n    hue = (hue + 0.005) % 1.0\n    time.sleep(0.015)\n"
+  },
+  "best_practices": [
+    "Enable SPI via raspi-config; reboot after.",
+    "Add dtoverlay=spi-frequency-set,core,600000 to /boot/config.txt to cap Pi\u00a01 Model\u00a0B core to 12\u202fMHz if instability occurs.",
+    "Twist CLK with GND and DATA with GND in short ribbon to reduce ringing.",
+    "Use global_brightness (5\u2011bit) 8\u201320 for dimming; keep per\u2011pixel 8\u2011bit at full for colour accuracy.",
+    "Insert a 100\u202f\u03a9 resistor in DATA line before the first pixel if you see ghosting."
+  ],
+  "troubleshooting": {
+    "one_led_updates": "Pad end frame correctly or lower clock to 8\u202fMHz",
+    "random_flicker": "Check ground, power injection, lower SPI speed, add resistor",
+    "color_shift_low_dim": "Keep global brightness \u22658",
+    "camera_band": "PWM 4.7\u202fkHz \u2014 use higher shutter speed or diffuse LEDs"
+  },
+  "documentation_markdown": "# SK9822 Raspberry\u202fPi (Python Only) Knowledge Pack\n\n## Quick\u2011start recap\nWith the Pi Model\u202fB you can drive the SK9822 at **8\u201320\u202fMHz SPI** via `spidev` or the higher\u2011level **apa102\u2011pi** package, provided you add a **74HCT125 level shifter**, keep a **1000\u202f\u00b5F cap** on the 5\u202fV rail, and finish every frame with **(LEDs \u00f7\u00a02)+1 zero bytes**. Two code patterns cover 95\u202f% of use\u2011cases: a five\u2011line apa102\u2011pi \u201crainbow\u201d loop for fast prototyping and a raw\u2011`spidev` loop for maximum frame\u2011rate control.\n\n## 1. Library choices\n### apa102\u2011pi\nPure\u2011Python, no C build step; supports SK9822 out of the box and exposes `global_brightness`, SPI speed, and color order knobs.  \nInstall: `pip install apa102-pi`\n\n### Pimoroni `apa102`\nAlternate driver that can fall back to GPIO bit\u2011banging if SPI is busy.\n\n### Raw `spidev`\nLowest overhead; lets you push >350\u202fFPS by writing pre\u2011built bytearrays.\n\n## 2. Wiring & power quick\u2011check\n| Lead | Pi pin | Note |\n|------|--------|------|\n| **Red (+5\u202fV)** | 5\u202fV rail (via 60\u201375\u202fW PSU) | Inject power every 0.5\u202fm |\n| **Yellow (CLK)** | GPIO\u202f11 (SCLK) | Buffer with 74HCT125 |\n| **Green (DATA)** | GPIO\u202f10 (MOSI) | 100\u202f\u03a9 series resistor helps ringing |\n| **Black (GND)** | Ground | Common ground |\n\nPlus **\u22651000\u202f\u00b5F electrolytic** across 5\u202fV/GND at the strip head.\n\n## 3. SPI tuning\n* Enable SPI with `raspi-config`.\n* On older Pi core, add `dtoverlay=spi-frequency-set,core,600000` to cap core clock.\n* Stable speeds: 8\u201312\u202fMHz typical; up to 20\u202fMHz with short leads + level shifting.\n* Always finish a frame with 4 zero bytes + (N\u00f72+1) zeros.\n\n## 4. Code snippets\n### apa102\u2011pi rainbow\n```python\nfrom apa102_pi.driver import APA102\nimport colorsys, time\nNUM=144\nstrip = APA102(num_led=NUM, global_brightness=31, spi_speed_hz=12000000)\nh=0.0\nwhile True:\n    r,g,b = [int(c*255) for c in colorsys.hsv_to_rgb(h,1,1)]\n    for i in range(NUM):\n        strip.set_pixel(i,r,g,b)\n    strip.show()\n    h=(h+0.002)%1.0\n    time.sleep(0.01)\n```\n\n### Raw spidev high\u2011speed loop\n```python\nimport spidev,time,itertools,colorsys\nNUM=144\nSTART=b'\\x00\\x00\\x00\\x00'\nEND=b'\\x00'*(NUM//2+1)\nspi=spidev.SpiDev(0,0)\nspi.max_speed_hz=20000000\nspi.mode=0\nhue=0.0\nwhile True:\n    r,g,b=[int(c*255) for c in colorsys.hsv_to_rgb(hue,1,1)]\n    frame = bytes(itertools.chain.from_iterable((0xE0|31,b,g,r) for _ in range(NUM)))\n    spi.writebytes(START+frame+END)\n    hue=(hue+0.005)%1.0\n    time.sleep(0.015)\n```\n\n## 5. Best\u2011practice checklist\n1. Level\u2011shift CLK & DATA with 74HCT125.\n2. Use `global_brightness` (range 8\u201320) for master dimming.\n3. Twist signal wires with ground, keep length <15\u202fcm.\n4. Add 1000\u202f\u00b5F cap + 100\u202f\u03a9 data resistor.\n5. Pad frames properly to avoid tail\u2011LED lag.\n\n## 6. Troubleshooting\n| Symptom | Fix |\n|---------|-----|\n| Only first pixel updates | Pad end frame correctly or lower SPI clock |\n| Random flicker | Improve ground, inject power, add resistor/slow clock |\n| Colour shift at low dim | Keep `global_brightness` \u2265\u202f8 |\n| Camera banding | Increase shutter speed or diffuse strip |"
+}
