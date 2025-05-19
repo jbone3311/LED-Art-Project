@@ -1,9 +1,9 @@
-from apa102_pi.driver import APA102
+from apa102_pi.driver.apa102 import APA102
 import colorsys
 import time
 
 NUM = 144  # Number of LEDs in your strip
-strip = APA102(num_led=NUM, global_brightness=31, spi_speed_hz=12000000)
+strip = APA102(num_led=NUM, global_brightness=31, bus_speed_hz=12000000)
 h = 0.0
 try:
     while True:

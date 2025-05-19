@@ -1,4 +1,4 @@
-from apa102_pi.driver import APA102
+from apa102_pi.driver.apa102 import APA102
 import time
 import math
 
@@ -10,7 +10,7 @@ strip = None
 
 def init_strip():
     global strip
-    strip = APA102(num_led=LED_COUNT, global_brightness=GLOBAL_BRIGHTNESS, spi_speed_hz=SPI_SPEED_HZ)
+    strip = APA102(num_led=LED_COUNT, global_brightness=GLOBAL_BRIGHTNESS, bus_speed_hz=SPI_SPEED_HZ)
     return strip
 
 def apply_color(strip, color):
