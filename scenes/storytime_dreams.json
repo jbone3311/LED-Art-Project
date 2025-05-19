@@ -4,6 +4,7 @@
   "narrative_intro": "Settle in for a bedtime story told in color and light. Each step is a new page in the dream.",
   "steps": [
     {
+      "step": 1,
       "effect": "solid",
       "color": [60, 60, 120],
       "duration": 8,
@@ -12,6 +13,7 @@
       "narrative": "Once upon a time, the night sky settled in, deep and blue."
     },
     {
+      "step": 2,
       "effect": "breathing",
       "base_color": [255, 180, 220],
       "cycle_s": 8,
@@ -21,6 +23,7 @@
       "narrative": "A gentle pink cloud drifted by, breathing softly."
     },
     {
+      "step": 3,
       "effect": "pulse",
       "color": [255, 191, 0],
       "speed": 10,
@@ -31,6 +34,7 @@
       "narrative": "A golden star shot across the sky, leaving a trail of wonder."
     },
     {
+      "step": 4,
       "effect": "gradient",
       "color_start": [135, 206, 235],
       "color_end": [181, 126, 220],
@@ -42,6 +46,7 @@
       "narrative": "The sky changed from blue to lavender, as dreams began to swirl."
     },
     {
+      "step": 5,
       "effect": "chase",
       "color": [0, 255, 255],
       "speed": 6,
@@ -51,6 +56,7 @@
       "narrative": "A playful breeze chased the dreams around, shimmering with laughter."
     },
     {
+      "step": 6,
       "effect": "solid",
       "color": [0, 0, 0],
       "duration": 6,

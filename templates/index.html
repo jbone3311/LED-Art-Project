@@ -193,6 +193,7 @@
                 // Render all info
                 let info = '';
                 if (s.running) {
+                    info += `<b>Step:</b> ${s.step || 1}<br>`;
                     info += `<b>Effect:</b> ${s.current_effect || ''}<br>`;
                     info += `<b>Transition:</b> ${s.current_transition || ''}<br>`;
                     if (s.step_params) {
@@ -206,7 +207,7 @@
                         info += `<b>Narrative:</b> <i>${s.narrative}</i>`;
                     }
                 } else {
-                    info = '';
+                    info = '<i>Idle</i>';
                 }
                 document.getElementById('stepInfoPanel').innerHTML = info;
             });

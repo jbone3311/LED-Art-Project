@@ -4,6 +4,7 @@
   "narrative_intro": "Welcome to the James Turrell Showcase. This show guides you through a meditative journey of color, light, and perception, inspired by Turrell's iconic works.",
   "steps": [
     {
+      "step": 1,
       "effect": "solid",
       "color": [80, 120, 255],
       "duration": 10,
@@ -12,6 +13,7 @@
       "narrative": "The sky opens in a tranquil blue, inviting you to breathe and settle."
     },
     {
+      "step": 2,
       "effect": "gradient",
       "color_start": [80, 120, 255],
       "color_end": [255, 180, 220],
@@ -21,6 +23,7 @@
       "narrative": "A gentle gradient flows, echoing the shifting light of dawn."
     },
     {
+      "step": 3,
       "effect": "breathing",
       "base_color": [255, 180, 220],
       "cycle_s": 60,
@@ -30,6 +33,7 @@
       "narrative": "The space breathes with you, pulsing softly in pink."
     },
     {
+      "step": 4,
       "effect": "pulse",
       "color": [255, 90, 40],
       "speed": 30,
@@ -40,6 +44,7 @@
       "narrative": "A pulse of orange radiates, like the sun cresting the horizon."
     },
     {
+      "step": 5,
       "effect": "strobe",
       "color": [255, 255, 255],
       "duty_cycle": 0.1,
@@ -50,6 +55,7 @@
       "narrative": "A burst of white, shimmering and alive, disrupts the calm."
     },
     {
+      "step": 6,
       "effect": "chase",
       "color": [120, 255, 180],
       "speed": 1,

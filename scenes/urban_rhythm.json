@@ -4,6 +4,7 @@
   "narrative_intro": "Experience a night in the city, where every light tells a story.",
   "steps": [
     {
+      "step": 1,
       "effect": "strobe",
       "color": [255, 0, 56],
       "duty_cycle": 0.15,
@@ -13,6 +14,7 @@
       "narrative": "Neon signs flicker to life, painting the night in red."
     },
     {
+      "step": 2,
       "effect": "chase",
       "color": [255, 255, 255],
       "speed": 10,
@@ -22,6 +24,7 @@
       "narrative": "Headlights race down the avenue, white and bright."
     },
     {
+      "step": 3,
       "effect": "pulse",
       "color": [255, 191, 0],
       "speed": 8,
@@ -34,6 +37,7 @@
       "narrative": "A yellow taxi pulses through the night, weaving between colors."
     },
     {
+      "step": 4,
       "effect": "breathing",
       "base_color": [60, 60, 60],
       "cycle_s": 6,
@@ -43,6 +47,7 @@
       "narrative": "The city breathes, a moment of quiet in the grey."
     },
     {
+      "step": 5,
       "effect": "gradient",
       "color_start": [60, 60, 120],
       "color_end": [255, 191, 0],
@@ -52,6 +57,7 @@
       "narrative": "Dawn approaches, blue fades to gold."
     },
     {
+      "step": 6,
       "effect": "solid",
       "color": [255, 255, 255],
       "duration": 5,

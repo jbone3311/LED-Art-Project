@@ -1,65 +1,71 @@
 {
   "name": "Spinorama",
-  "description": "A kinetic show of spinning, chasing, and pulsing lights with fading colors.",
-  "narrative_intro": "Spinorama is a celebration of motion—lights chase, spin, and fade in a whirl of color.",
+  "description": "A smooth, meditative show of spinning, chasing, and pulsing lights with gentle color fades.",
+  "narrative_intro": "Spinorama is a celebration of motion—lights chase, spin, and fade in a whirl of color. Now, the carousel turns slowly, inviting you to watch the colors blend.",
   "steps": [
     {
+      "step": 1,
       "effect": "chase",
       "color": [255, 191, 0],
-      "speed": 18,
-      "duration": 8,
+      "speed": 4,
+      "duration": 14,
       "transition": "fade",
-      "transition_duration": 2,
-      "narrative": "Golden lights spin up, starting the carousel."
+      "transition_duration": 4,
+      "narrative": "Golden lights begin a slow, graceful spin."
     },
     {
+      "step": 2,
       "effect": "chase",
       "color": [0, 255, 255],
-      "speed": 22,
-      "duration": 8,
+      "speed": 5,
+      "duration": 14,
       "transition": "wave",
-      "transition_duration": 2,
-      "narrative": "Aqua spins join in, weaving through the gold."
+      "transition_duration": 4,
+      "narrative": "Aqua joins the spin, gently weaving through the gold."
     },
     {
+      "step": 3,
       "effect": "pulse",
       "color": [255, 102, 178],
-      "speed": 16,
-      "width_px": 12,
-      "duration": 7,
+      "speed": 3,
+      "width_px": 18,
+      "duration": 12,
       "transition": "patterned_fade",
       "palette": [[255, 191, 0], [0, 255, 255], [255, 102, 178]],
-      "step_s": 1.5,
-      "transition_duration": 2,
-      "narrative": "A pink pulse spins, fading through the palette."
+      "step_s": 3,
+      "transition_duration": 4,
+      "narrative": "A pink pulse glides around, fading softly through the palette."
     },
     {
+      "step": 4,
       "effect": "chase",
       "color": [181, 126, 220],
-      "speed": 20,
-      "duration": 8,
-      "transition": "random_shimmer",
-      "transition_duration": 2,
-      "narrative": "Lavender spins shimmer and fade, adding magic."
+      "speed": 4,
+      "duration": 14,
+      "transition": "wave",
+      "transition_duration": 4,
+      "narrative": "Lavender spins slowly, blending with the others."
     },
     {
+      "step": 5,
       "effect": "pulse",
       "color": [255, 255, 255],
-      "speed": 24,
-      "width_px": 10,
-      "duration": 7,
+      "speed": 3,
+      "width_px": 16,
+      "duration": 12,
       "transition": "middle-out",
-      "transition_duration": 2,
-      "narrative": "White pulses spin from the center, fading to stillness."
+      "transition_duration": 4,
+      "narrative": "White pulses drift from the center, fading to stillness."
     },
     {
+      "step": 6,
       "effect": "chase",
       "color": [0, 0, 0],
-      "speed": 10,
-      "duration": 4,
+      "speed": 2,
+      "duration": 6,
       "transition": "fade",
-      "transition_duration": 2,
-      "narrative": "The lights spin down, fading to black."
+      "transition_duration": 4,
+      "narrative": "The lights slow to a stop, gently fading to black."
     }
   ],
   "last": [0, 0, 0]

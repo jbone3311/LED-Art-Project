@@ -4,6 +4,7 @@
   "narrative_intro": "Kinetic Excite is a story of energy, movement, and surprise. Each step is a burst of life, a dance of light.",
   "steps": [
     {
+      "step": 1,
       "effect": "strobe",
       "color": [255, 40, 40],
       "duty_cycle": 0.2,
@@ -13,6 +14,7 @@
       "narrative": "A flash of red, like a starting gun, launches the kinetic journey."
     },
     {
+      "step": 2,
       "effect": "chase",
       "color": [40, 255, 80],
       "speed": 12,
@@ -22,6 +24,7 @@
       "narrative": "Green energy races down the line, a comet in motion."
     },
     {
+      "step": 3,
       "effect": "pulse",
       "color": [40, 120, 255],
       "speed": 25,
@@ -34,6 +37,7 @@
       "narrative": "Blue pulses ripple, shifting through a spectrum of surprise."
     },
     {
+      "step": 4,
       "effect": "breathing",
       "base_color": [255, 80, 180],
       "cycle_s": 2,
@@ -44,6 +48,7 @@
       "narrative": "Pink breathes in and out, a moment of anticipation."
     },
     {
+      "step": 5,
       "effect": "gradient",
       "color_start": [255, 255, 255],
       "color_end": [0, 0, 0],
@@ -53,6 +58,7 @@
       "narrative": "A white-to-black gradient, like a curtain falling."
     },
     {
+      "step": 6,
       "effect": "solid",
       "color": [0, 0, 0],
       "duration": 1,

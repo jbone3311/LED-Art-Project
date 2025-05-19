@@ -4,6 +4,7 @@
   "narrative_intro": "Travel beneath the aurora. Each step is a new wonder in the sky.",
   "steps": [
     {
+      "step": 1,
       "effect": "gradient",
       "color_start": [0, 51, 153],
       "color_end": [0, 255, 255],
@@ -13,6 +14,7 @@
       "narrative": "Blue and aqua sweep across the sky, the aurora begins."
     },
     {
+      "step": 2,
       "effect": "breathing",
       "base_color": [181, 126, 220],
       "cycle_s": 7,
@@ -22,6 +24,7 @@
       "narrative": "Lavender pulses gently, shimmering in the cold air."
     },
     {
+      "step": 3,
       "effect": "chase",
       "color": [153, 255, 51],
       "speed": 7,
@@ -33,6 +36,7 @@
       "narrative": "Green lights chase each other, dancing in the night."
     },
     {
+      "step": 4,
       "effect": "pulse",
       "color": [255, 255, 255],
       "speed": 12,
@@ -43,6 +47,7 @@
       "narrative": "A white pulse, like a shooting star, crosses the sky."
     },
     {
+      "step": 5,
       "effect": "strobe",
       "color": [255, 0, 56],
       "duty_cycle": 0.12,
@@ -53,6 +58,7 @@
       "narrative": "Red flashes burst, echoing the aurora's wildest moments."
     },
     {
+      "step": 6,
       "effect": "solid",
       "color": [0, 0, 0],
       "duration": 6,
