@@ -43,7 +43,7 @@
                     <div class="progress-bar" id="progressBar" style="width:0%"></div>
                 </div>
             </div>
-            <div id="narrativeText" class="desc" style="min-height:2em;"></div>
+            <div id="stepInfoPanel" class="desc" style="min-height:2em; margin-top:0.5em; background:#202225; border-radius:0.5em; padding:1em;"></div>
             <label for="sceneSelect">Available Shows:</label>
             <select id="sceneSelect"></select>
             <div class="desc" id="sceneDesc"></div>
@@ -190,7 +190,25 @@
                     if (s.duration) text += ` / ~${s.duration}s`;
                 }
                 document.getElementById('progressText').textContent = text;
-                document.getElementById('narrativeText').textContent = s.narrative || '';
+                // Render all info
+                let info = '';
+                if (s.running) {
+                    info += `<b>Effect:</b> ${s.current_effect || ''}<br>`;
+                    info += `<b>Transition:</b> ${s.current_transition || ''}<br>`;
+                    if (s.step_params) {
+                        info += `<b>Parameters:</b><ul style='margin:0 0 0 1em;'>`;
+                        for (const [k, v] of Object.entries(s.step_params)) {
+                            info += `<li><b>${k}</b>: ${JSON.stringify(v)}</li>`;
+                        }
+                        info += `</ul>`;
+                    }
+                    if (s.narrative) {
+                        info += `<b>Narrative:</b> <i>${s.narrative}</i>`;
+                    }
+                } else {
+                    info = '';
+                }
+                document.getElementById('stepInfoPanel').innerHTML = info;
             });
         }
         setInterval(pollStatus, 1000);
