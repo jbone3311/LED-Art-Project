@@ -1,0 +1,62 @@
+[
+    {
+        "name": "Dev Containers",
+        "description": "Open any folder or repository inside a Docker container and take advantage of Visual Studio Code\u2019s full feature set.",
+        "publisher": "ms-vscode-remote"
+    },
+    {
+        "name": "Remote - SSH",
+        "description": "Open any folder on a remote machine using SSH and take advantage of VS Code's full feature set.",
+        "publisher": "ms-vscode-remote"
+    },
+    {
+        "name": "Remote - SSH: Editing Configuration Files",
+        "description": "Edit SSH configuration files.",
+        "publisher": "Microsoft"
+    },
+    {
+        "name": "Remote Explorer",
+        "description": "View remote machines for SSH and Tunnels.",
+        "publisher": "Microsoft"
+    },
+    {
+        "name": "Docker",
+        "description": "Makes it easy to create, manage, and debug containerized applications.",
+        "publisher": "ms-azuretools or Microsoft"
+    },
+    {
+        "name": "Docker Explorer",
+        "description": "Manage Docker Containers, Docker Images, and Docker Registries.",
+        "publisher": "formulahendry"
+    },
+    {
+        "name": "Python",
+        "description": "Python language support with extension access points for IntelliSense (Pylance), Debugging, etc.",
+        "publisher": "Microsoft"
+    },
+    {
+        "name": "Pylance",
+        "description": "A performant, feature-rich language server for Python in VS Code.",
+        "publisher": "ms-python"
+    },
+    {
+        "name": "Python Debugger",
+        "description": "Python Debugger extension using debugpy.",
+        "publisher": "Microsoft"
+    },
+    {
+        "name": "IntelliCode API Usage Examples",
+        "description": "See relevant code examples from GitHub for over 100K different APIs right in your editor.",
+        "publisher": "Microsoft"
+    },
+    {
+        "name": "REST Client",
+        "description": "REST Client for Visual Studio Code. Allows you to send HTTP requests and view responses directly.",
+        "publisher": "humao"
+    },
+    {
+        "name": "Better Comments",
+        "description": "Improve your code commenting by annotating with alert, info, TODOs, and more.",
+        "publisher": "aaron-bond"
+    }
+]

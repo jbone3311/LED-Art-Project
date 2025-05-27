@@ -1,0 +1,16 @@
+- 2025-05-26 5903ac3 Add web-based LED display interface with show controls and creator panel
+- 2025-05-19 d8e24f4 Highlight step numbers, info panel, and show clarity in README (v0.28)
+- 2025-05-19 af33674 Restart server and finalize all step-numbered JSONs and UI improvements
+- 2025-05-19 96ffffe Add step numbers to all show steps and improve info panel display
+- 2025-05-19 093c865 Add Spinorama: kinetic spinning and fading chase/pulse show
+- 2025-05-19 ae0ee06 v0.27: Show full step info (effect, transition, parameters, narrative) in UI panel
+- 2025-05-19 b5fe67f v0.26: Add narrative feature and creative shows with story text at each step
+- 2025-05-19 4175f92 v0.25: Effects working, color palette and help UI, Turrell-inspired scenes, stable Flask backend
+- 2025-05-19 4695b45 Add .gitignore for Python, venv, and common editor/OS files
+- 2025-05-19 7a5a1db Version 0.1: working APA102 LED test and driver, SPI enabled, all dependencies fixed
+- 2025-05-19 0634157 Beta 0.0: venv setup, requirements update, and launch script added
+- 2025-05-19 a90a5ac Add .gitattributes for LF endings and update README with project details
+- 2025-05-18 708d182 Initial commit: test MVP
+- 2025-05-05 3c8c543 Never Tested
+- 2025-05-05 55002d8 first commit
+- 2025-05-05 94987cc first commit

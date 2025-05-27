@@ -1,25 +1,36 @@
 {
   "mcpServers": {
-    "figma": {
-      "url": "https://mcp.cursor.so/figma"
-    },
-    "github": {
-      "url": "https://mcp.cursor.so/github"
-    },
-    "docker": {
-      "url": "https://mcp.cursor.so/docker"
-    },
-    "sequential-thinking": {
-      "url": "https://mcp.cursor.so/sequential-thinking"
-    },
-    "firecrawl": {
-      "url": "https://mcp.cursor.so/firecrawl"
-    },
     "memory-bank": {
-      "url": "https://mcp.cursor.so/memory-bank"
+      "command": "npx",
+      "args": [
+        "-y", "mcp-memory-bank",
+        "--path", ".cursorMEM/${GIT_BRANCH}"
+      ]
     },
     "knowledge-graph": {
-      "url": "https://mcp.cursor.so/knowledge-graph"
+      "command": "npx",
+      "args": [
+        "-y", "mcp-knowledge-graph",
+        "--port", "4280",
+        "--store-path", ".cursorMEM/${GIT_BRANCH}/graph"
+      ]
+    },
+    "docs-provider": {
+      "command": "npx",
+      "args": [
+        "-y", "mcp-docs-provider",
+        "docs",
+        "--port", "5050",
+        "--watch",
+        "--cache-dir", ".cursorMEM/docs-cache"
+      ]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": [
+        "-y", "mcp-sequential-thinking",
+        "--log-dir", ".cursorMEM/tasks"
+      ]
     }
   }
-} 
+}
