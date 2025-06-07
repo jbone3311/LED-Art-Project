@@ -9,12 +9,10 @@ GLOBAL_BRIGHTNESS = 31
 SPI_SPEED_HZ = 12000000
 
 def get_led_driver():
-    """
-    Returns the appropriate LED driver based on configuration.
-    """
+    """Return initialized strip object and helpers based on configuration."""
     if USE_MOCK_DRIVER:
         from .mock_led_driver import init_strip, apply_color, apply_fade
     else:
         from .led_driver import init_strip, apply_color, apply_fade
-    
-    return init_strip(), apply_color, apply_fade 
+
+    return init_strip(), apply_color, apply_fade

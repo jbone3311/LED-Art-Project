@@ -2,14 +2,16 @@ import json
 import math
 import random
 import time
-from controller.led_driver import apply_color, apply_fade, LED_COUNT
+from controller.config import get_led_driver, LED_COUNT
+
+_, apply_color, apply_fade = get_led_driver()
 
 def effect_solid(strip, color, duration, **kwargs):
     apply_color(strip, color)
     time.sleep(duration)
 
 def effect_gradient(strip, color_start, color_end, duration, **kwargs):
-    steps = LED_COUNT
+    steps = strip.num_led
     for i in range(steps):
         t = i / (steps - 1)
         r = int(color_start[0] + (color_end[0] - color_start[0]) * t)
@@ -31,8 +33,8 @@ def effect_breathing(strip, base_color, cycle_s, duration, **kwargs):
 def effect_pulse(strip, color, speed, width_px, duration, **kwargs):
     steps = int(duration * 30)
     for i in range(steps):
-        pos = int((i * speed / 30) % LED_COUNT)
-        for j in range(LED_COUNT):
+        pos = int((i * speed / 30) % strip.num_led)
+        for j in range(strip.num_led):
             if abs(j - pos) < width_px // 2:
                 strip.set_pixel(j, *color)
             else:
@@ -54,8 +56,8 @@ def effect_strobe(strip, color, duty_cycle, tempo, duration, **kwargs):
 def effect_chase(strip, color, speed, duration, **kwargs):
     steps = int(duration * 30)
     for i in range(steps):
-        pos = int((i * speed / 30) % LED_COUNT)
-        for j in range(LED_COUNT):
+        pos = int((i * speed / 30) % strip.num_led)
+        for j in range(strip.num_led):
             if j == pos:
                 strip.set_pixel(j, *color)
             else:
@@ -73,7 +75,7 @@ def transition_instant(strip, from_color, to_color, **kwargs):
 def transition_wave(strip, from_color, to_color, duration, wavelength_px=20, speed=1, **kwargs):
     steps = int(duration * 30)
     for t in range(steps):
-        for i in range(LED_COUNT):
+        for i in range(strip.num_led):
             phase = 2 * math.pi * (i / wavelength_px - speed * t / steps)
             mix = 0.5 + 0.5 * math.sin(phase)
             color = [int(from_color[j] + (to_color[j] - from_color[j]) * mix) for j in range(3)]
@@ -83,10 +85,10 @@ def transition_wave(strip, from_color, to_color, duration, wavelength_px=20, spe
 
 def transition_middle_out(strip, from_color, to_color, duration, **kwargs):
     steps = int(duration * 30)
-    mid = LED_COUNT // 2
+    mid = strip.num_led // 2
     for t in range(steps):
         spread = int((t / steps) * mid)
-        for i in range(LED_COUNT):
+        for i in range(strip.num_led):
             if abs(i - mid) <= spread:
                 strip.set_pixel(i, *to_color)
             else:
@@ -97,7 +99,7 @@ def transition_middle_out(strip, from_color, to_color, duration, **kwargs):
 def transition_random_shimmer(strip, from_color, to_color, duration, jitter_pct=0.05, **kwargs):
     steps = int(duration * 30)
     for t in range(steps):
-        for i in range(LED_COUNT):
+        for i in range(strip.num_led):
             mix = t / steps
             base = [int(from_color[j] + (to_color[j] - from_color[j]) * mix) for j in range(3)]
             jitter = [min(255, max(0, int(c + random.uniform(-jitter_pct, jitter_pct) * 255))) for c in base]

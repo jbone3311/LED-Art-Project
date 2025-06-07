@@ -1,14 +1,14 @@
 # app.py
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from effects import apply_scene
-from controller.led_driver import init_strip, apply_color, apply_fade
+from controller.config import get_led_driver
 import json
 import os
 import threading
 import time
 
 app = Flask(__name__)
-strip = init_strip()
+strip, apply_color, apply_fade = get_led_driver()
 
 SCENES_DIR = 'scenes'
 
