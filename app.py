@@ -1,6 +1,6 @@
 # app.py
 from flask import Flask, render_template, request, jsonify, send_from_directory
-from effects import apply_scene
+import effects
 from controller.led_driver import init_strip, apply_color, apply_fade
 import json
 import os
@@ -10,7 +10,7 @@ import time
 app = Flask(__name__)
 strip = init_strip()
 
-SCENES_DIR = 'scenes'
+SCENES_DIR = os.path.join(os.path.dirname(__file__), 'scenes')
 
 # Ensure static directory exists and turrell_colors.json is available
 STATIC_DIR = os.path.join(os.path.dirname(__file__), 'static')
@@ -63,9 +63,16 @@ def run_scene_thread(scene_data):
         if status['current_transition'] != 'instant':
             from_color = last
             to_color = step.get('color', step.get('color_start', last))
-            apply_scene.transition(strip, from_color, to_color, step.get('transition_duration', 2), **{k: v for k, v in step.items() if k not in ("effect", "duration")})
+            trans_fn = effects.transitions.get(
+                status['current_transition'], effects.transition_fade
+            )
+            trans_fn(strip, from_color, to_color, step.get('transition_duration', 2),
+                     **{k: v for k, v in step.items() if k not in ("effect", "duration")})
         # Run effect
-        apply_scene.effects.get(status['current_effect'], apply_scene.effect_solid)(strip, **{k: v for k, v in step.items() if k not in ("effect", "transition", "transition_duration")})
+        effect_fn = effects.effects.get(
+            status['current_effect'], effects.effect_solid
+        )
+        effect_fn(strip, **{k: v for k, v in step.items() if k not in ("effect", "transition", "transition_duration")})
         last = step.get('color', step.get('color_end', last))
     with status_lock:
         status['running'] = False
@@ -99,8 +106,12 @@ def fade():
 @app.route('/apply_scene', methods=['POST'])
 def scene():
     data = request.json
-    apply_scene(strip, data)
-    return jsonify(status='scene loaded')
+    global scene_thread
+    if scene_thread and scene_thread.is_alive():
+        return jsonify({'error': 'Scene already running'}), 400
+    scene_thread = threading.Thread(target=run_scene_thread, args=(data,))
+    scene_thread.start()
+    return jsonify(status='scene started')
 
 @app.route('/scenes', methods=['GET'])
 def list_scenes():
@@ -124,8 +135,12 @@ def apply_scene_file():
         return jsonify({'error': 'No filename provided'}), 400
     with open(os.path.join(SCENES_DIR, filename)) as f:
         scene_data = json.load(f)
-    apply_scene(strip, scene_data)
-    return jsonify({'status': 'scene loaded'})
+    global scene_thread
+    if scene_thread and scene_thread.is_alive():
+        return jsonify({'error': 'Scene already running'}), 400
+    scene_thread = threading.Thread(target=run_scene_thread, args=(scene_data,))
+    scene_thread.start()
+    return jsonify({'status': 'scene started'})
 
 @app.route('/status', methods=['GET'])
 def get_status():
@@ -139,7 +154,7 @@ def run_effect():
     params = data.get('params', {})
     if not effect:
         return jsonify({'error': 'No effect provided'}), 400
-    fn = getattr(apply_scene, f'effect_{effect}', None)
+    fn = getattr(effects, f'effect_{effect}', None)
     if not fn:
         return jsonify({'error': 'Unknown effect'}), 400
     threading.Thread(target=fn, args=(strip,), kwargs=params).start()
