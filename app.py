@@ -5,7 +5,7 @@ import shutil
 import threading
 import time
 
-from flask import Flask, jsonify, render_template, request, send_from_directory
+from flask import Flask, Response, jsonify, render_template, request, send_from_directory
 
 import effects
 from controller import apply_color, apply_fade, init_strip
@@ -24,27 +24,11 @@ _turrell_dst = os.path.join(STATIC_DIR, 'turrell_colors.json')
 if os.path.exists(_turrell_src) and not os.path.exists(_turrell_dst):
     shutil.copy(_turrell_src, _turrell_dst)
 
-# Shared status reported via /status. Mutate only while holding status_lock.
-status = {
-    'running': False,
-    'current_effect': None,
-    'current_transition': None,
-    'step': 0,
-    'total_steps': 0,
-    'elapsed': 0,
-    'duration': 0,
-    'scene': None,
-    'narrative_intro': None,
-    'narrative': None,
-    'step_params': None,
-}
-status_lock = threading.Lock()
-scene_thread = None  # guarded by status_lock
-
 
 def _idle_status():
     return {
         'running': False,
+        'paused': False,
         'current_effect': None,
         'current_transition': None,
         'step': 0,
@@ -55,37 +39,53 @@ def _idle_status():
         'narrative_intro': None,
         'narrative': None,
         'step_params': None,
+        'speed': 1.0,
+        'brightness': 31,
     }
 
 
-def run_scene_thread(scene_data):
+# Shared status reported via /status. Mutate only while holding status_lock.
+status = _idle_status()
+status_lock = threading.Lock()
+scene_thread = None  # guarded by status_lock
+
+
+def _set_status(**fields):
+    """Update status under lock."""
+    with status_lock:
+        status.update(fields)
+
+
+def run_scene_thread(scene_data, speed):
     steps = scene_data.get('steps', [])
     start_time = time.time()
-    with status_lock:
-        status.update({
-            'running': True,
-            'scene': scene_data.get('name', 'Unnamed'),
-            'total_steps': len(steps),
-            'duration': effects.estimate_duration(steps),
-            'narrative_intro': scene_data.get('narrative_intro'),
-        })
+    _set_status(
+        running=True,
+        paused=False,
+        scene=scene_data.get('name', 'Unnamed'),
+        total_steps=len(steps),
+        duration=effects.estimate_duration(steps, speed=speed),
+        narrative_intro=scene_data.get('narrative_intro'),
+        speed=speed,
+    )
 
     def on_step(idx, step):
-        with status_lock:
-            status.update({
-                'step': idx,
-                'current_effect': step.get('effect', 'solid'),
-                'current_transition': step.get('transition', 'fade'),
-                'elapsed': int(time.time() - start_time),
-                'narrative': step.get('narrative'),
-                'step_params': effects.effect_kwargs(step),
-            })
+        _set_status(
+            step=idx,
+            current_effect=step.get('effect', 'solid'),
+            current_transition=step.get('transition', 'fade'),
+            elapsed=int(time.time() - start_time),
+            narrative=step.get('narrative'),
+            step_params=effects.effect_kwargs(step),
+        )
 
     try:
-        effects.apply_scene(strip, scene_data, on_step=on_step)
+        effects.apply_scene(strip, scene_data, on_step=on_step, speed=speed)
     finally:
         with status_lock:
+            preserved_brightness = status.get('brightness', 31)
             status.update(_idle_status())
+            status['brightness'] = preserved_brightness
 
 
 def _start_scene(scene_data):
@@ -95,9 +95,24 @@ def _start_scene(scene_data):
         if scene_thread is not None and scene_thread.is_alive():
             return False, 'Scene already running'
         effects.reset_cancel()
-        scene_thread = threading.Thread(target=run_scene_thread, args=(scene_data,), daemon=True)
+        effects.resume()
+        speed = float(status.get('speed') or 1.0)
+        scene_thread = threading.Thread(
+            target=run_scene_thread,
+            args=(scene_data, speed),
+            daemon=True,
+        )
         scene_thread.start()
     return True, None
+
+
+def _set_brightness(value):
+    if hasattr(strip, 'set_global_brightness'):
+        strip.set_global_brightness(value)
+    elif hasattr(strip, 'set_brightness'):
+        strip.set_brightness(value)
+    elif hasattr(strip, 'global_brightness'):
+        strip.global_brightness = value
 
 
 @app.route('/')
@@ -132,19 +147,21 @@ def scene():
 @app.route('/scenes', methods=['GET'])
 def list_scenes():
     scene_files = sorted(f for f in os.listdir(SCENES_DIR) if f.endswith('.json'))
-    scenes = []
+    out = []
     for fname in scene_files:
         try:
             with open(os.path.join(SCENES_DIR, fname)) as f:
                 data = json.load(f)
-        except (OSError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError) as e:
+            out.append({'filename': fname, 'name': fname, 'description': '', 'warnings': [f'parse error: {e}']})
             continue
-        scenes.append({
+        out.append({
             'filename': fname,
             'name': data.get('name', fname),
             'description': data.get('description', ''),
+            'warnings': effects.validate_scene(data),
         })
-    return jsonify(scenes)
+    return jsonify(out)
 
 
 @app.route('/apply_scene_file', methods=['POST'])
@@ -170,6 +187,22 @@ def get_status():
         return jsonify(dict(status))
 
 
+@app.route('/status_stream')
+def status_stream():
+    """Server-Sent Events stream of status changes. ~5 Hz, push on change."""
+    def gen():
+        last = None
+        # Send a hello immediately so EventSource fires `open`.
+        while True:
+            with status_lock:
+                snap = dict(status)
+            if snap != last:
+                yield f"data: {json.dumps(snap)}\n\n"
+                last = snap
+            time.sleep(0.2)
+    return Response(gen(), mimetype='text/event-stream')
+
+
 @app.route('/run_effect', methods=['POST'])
 def run_effect():
     data = request.json or {}
@@ -184,6 +217,48 @@ def run_effect():
     return jsonify({'status': f'{effect} started'})
 
 
+@app.route('/pause', methods=['POST'])
+def pause_scene():
+    effects.pause()
+    _set_status(paused=True)
+    return jsonify({'status': 'paused'})
+
+
+@app.route('/resume', methods=['POST'])
+def resume_scene():
+    effects.resume()
+    _set_status(paused=False)
+    return jsonify({'status': 'running'})
+
+
+@app.route('/brightness', methods=['POST'])
+def set_brightness():
+    data = request.json or {}
+    try:
+        value = int(data.get('value'))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'value must be an integer 0-31'}), 400
+    if not 0 <= value <= 31:
+        return jsonify({'error': 'value must be 0-31'}), 400
+    _set_brightness(value)
+    _set_status(brightness=value)
+    return jsonify({'status': 'ok', 'brightness': value})
+
+
+@app.route('/speed', methods=['POST'])
+def set_speed():
+    """Set the speed multiplier for the next scene start (1.0 = normal)."""
+    data = request.json or {}
+    try:
+        value = float(data.get('value'))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'value must be a number'}), 400
+    if value <= 0:
+        return jsonify({'error': 'value must be > 0'}), 400
+    _set_status(speed=value)
+    return jsonify({'status': 'ok', 'speed': value})
+
+
 @app.route('/stop', methods=['POST'])
 def stop_scene():
     global scene_thread
@@ -193,6 +268,7 @@ def stop_scene():
         apply_color(strip, [0, 0, 0])
         return jsonify({'status': 'idle'})
     effects.cancel()
+    effects.resume()  # don't deadlock a paused worker
     thread.join(timeout=5)
     apply_color(strip, [0, 0, 0])
     effects.reset_cancel()
@@ -208,6 +284,7 @@ def turn_off():
 @app.route('/exit', methods=['POST'])
 def exit_server():
     effects.cancel()
+    effects.resume()
     apply_color(strip, [0, 0, 0])
     os._exit(0)
 
@@ -218,4 +295,4 @@ def static_files(filename):
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)

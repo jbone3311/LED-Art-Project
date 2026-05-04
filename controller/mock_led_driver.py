@@ -668,6 +668,10 @@ class MockLEDStrip:
             self.global_brightness = brightness
             self.sliders["brightness"]["value"] = brightness
 
+    # APA102's method name; alias so effects/transitions can call either one.
+    def set_global_brightness(self, brightness: int):
+        self.set_brightness(brightness)
+
     def set_pixel_size(self, size: int):
         """Set the pixel size (10-40)"""
         if 10 <= size <= 40:

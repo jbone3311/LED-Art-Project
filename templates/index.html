@@ -49,8 +49,21 @@
             <div class="desc" id="sceneDesc"></div>
             <div class="actions">
                 <button onclick="playScene()">Play</button>
+                <button id="pauseBtn" onclick="togglePause()">Pause</button>
                 <button onclick="stopScene()">Stop</button>
                 <button onclick="refreshScenes()">Refresh</button>
+            </div>
+            <div class="settings">
+                <label for="brightnessSlider">Brightness: <span id="brightnessValue">31</span> / 31</label>
+                <input type="range" id="brightnessSlider" min="0" max="31" value="31" style="width:100%;">
+                <label for="speedSelect">Speed</label>
+                <select id="speedSelect">
+                    <option value="0.25">0.25x (very slow)</option>
+                    <option value="0.5">0.5x (slow)</option>
+                    <option value="1" selected>1x (normal)</option>
+                    <option value="2">2x (fast)</option>
+                    <option value="4">4x (very fast)</option>
+                </select>
             </div>
             <label for="colorPicker">Quick Color:</label>
             <div style="display:flex; gap:0.5em; align-items:center;">
@@ -61,10 +74,6 @@
             <div class="actions">
                 <button onclick="turnOff()">Turn Off LEDs</button>
                 <button onclick="exitServer()">Exit</button>
-            </div>
-            <div class="settings">
-                <strong>Settings (future):</strong>
-                <div>Brightness, speed, and more coming soon.</div>
             </div>
             <div class="actions">
                 <button onclick="showHelp('effects')">Help: Effects</button>
@@ -122,7 +131,14 @@
         function showDesc() {
             const sel = document.getElementById('sceneSelect');
             const idx = sel.selectedIndex;
-            document.getElementById('sceneDesc').textContent = scenes[idx]?.description || '';
+            const sc = scenes[idx];
+            const desc = document.getElementById('sceneDesc');
+            if (!sc) { desc.textContent = ''; return; }
+            let html = sc.description || '';
+            if (sc.warnings && sc.warnings.length) {
+                html += `<div style="color:#ffb347; margin-top:0.3em;">⚠ ${sc.warnings.join('; ')}</div>`;
+            }
+            desc.innerHTML = html;
         }
         function playScene() {
             const sel = document.getElementById('sceneSelect');
@@ -135,6 +151,25 @@
         }
         function stopScene() {
             fetch('/stop', { method: 'POST' });
+        }
+        let isPaused = false;
+        function togglePause() {
+            const url = isPaused ? '/resume' : '/pause';
+            fetch(url, { method: 'POST' });
+        }
+        function setBrightness(value) {
+            fetch('/brightness', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ value: parseInt(value, 10) })
+            });
+        }
+        function setSpeed(value) {
+            fetch('/speed', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ value: parseFloat(value) })
+            });
         }
         function refreshScenes() { loadScenes(); }
         function loadTurrellColors() {
@@ -178,48 +213,67 @@
         function exitServer() {
             fetch('/exit', { method: 'POST' });
         }
-        // Status polling
-        function pollStatus() {
-            fetch('/status').then(r => r.json()).then(data => {
-                const s = data;
-                document.getElementById('currentEffect').textContent = s.current_effect ? `${s.current_effect} (${s.current_transition})` : (s.running ? 'Running...' : 'Idle');
-                let pct = 0;
-                if (s.running && s.total_steps > 0) {
-                    pct = Math.round(100 * (s.step-1) / s.total_steps);
+        function applyStatus(s) {
+            const label = s.paused ? 'Paused'
+                        : s.current_effect ? `${s.current_effect} (${s.current_transition})`
+                        : s.running ? 'Running...' : 'Idle';
+            document.getElementById('currentEffect').textContent = label;
+            let pct = 0;
+            if (s.running && s.total_steps > 0) {
+                pct = Math.round(100 * (s.step - 1) / s.total_steps);
+            }
+            document.getElementById('progressBar').style.width = pct + '%';
+            let text = '';
+            if (s.running) {
+                text = `Step ${s.step}/${s.total_steps} | Elapsed: ${s.elapsed}s`;
+                if (s.duration) text += ` / ~${s.duration}s`;
+            }
+            document.getElementById('progressText').textContent = text;
+            // Pause button label tracks server state
+            isPaused = !!s.paused;
+            document.getElementById('pauseBtn').textContent = isPaused ? 'Resume' : 'Pause';
+            // Brightness + speed (only update slider/select if user isn't dragging)
+            const brightnessSlider = document.getElementById('brightnessSlider');
+            if (s.brightness != null && document.activeElement !== brightnessSlider) {
+                brightnessSlider.value = s.brightness;
+                document.getElementById('brightnessValue').textContent = s.brightness;
+            }
+            const speedSel = document.getElementById('speedSelect');
+            if (s.speed != null && document.activeElement !== speedSel) {
+                speedSel.value = String(s.speed);
+            }
+            let info = '';
+            if (s.running) {
+                if (s.narrative_intro) {
+                    info += `<div style='margin-bottom:0.6em; color:#9ad1ff;'><i>${s.narrative_intro}</i></div>`;
                 }
-                document.getElementById('progressBar').style.width = pct + '%';
-                let text = '';
-                if (s.running) {
-                    text = `Step ${s.step}/${s.total_steps} | Elapsed: ${s.elapsed}s`;
-                    if (s.duration) text += ` / ~${s.duration}s`;
+                info += `<b>Step:</b> ${s.step || 1}<br>`;
+                info += `<b>Effect:</b> ${s.current_effect || ''}<br>`;
+                info += `<b>Transition:</b> ${s.current_transition || ''}<br>`;
+                if (s.step_params) {
+                    info += `<b>Parameters:</b><ul style='margin:0 0 0 1em;'>`;
+                    for (const [k, v] of Object.entries(s.step_params)) {
+                        info += `<li><b>${k}</b>: ${JSON.stringify(v)}</li>`;
+                    }
+                    info += `</ul>`;
                 }
-                document.getElementById('progressText').textContent = text;
-                // Render all info
-                let info = '';
-                if (s.running) {
-                    if (s.narrative_intro) {
-                        info += `<div style='margin-bottom:0.6em; color:#9ad1ff;'><i>${s.narrative_intro}</i></div>`;
-                    }
-                    info += `<b>Step:</b> ${s.step || 1}<br>`;
-                    info += `<b>Effect:</b> ${s.current_effect || ''}<br>`;
-                    info += `<b>Transition:</b> ${s.current_transition || ''}<br>`;
-                    if (s.step_params) {
-                        info += `<b>Parameters:</b><ul style='margin:0 0 0 1em;'>`;
-                        for (const [k, v] of Object.entries(s.step_params)) {
-                            info += `<li><b>${k}</b>: ${JSON.stringify(v)}</li>`;
-                        }
-                        info += `</ul>`;
-                    }
-                    if (s.narrative) {
-                        info += `<b>Narrative:</b> <i>${s.narrative}</i>`;
-                    }
-                } else {
-                    info = '<i>Idle</i>';
+                if (s.narrative) {
+                    info += `<b>Narrative:</b> <i>${s.narrative}</i>`;
                 }
-                document.getElementById('stepInfoPanel').innerHTML = info;
-            });
+            } else {
+                info = '<i>Idle</i>';
+            }
+            document.getElementById('stepInfoPanel').innerHTML = info;
         }
-        setInterval(pollStatus, 1000);
+        function startStatusStream() {
+            if (!('EventSource' in window)) {
+                setInterval(() => fetch('/status').then(r => r.json()).then(applyStatus), 1000);
+                return;
+            }
+            const es = new EventSource('/status_stream');
+            es.onmessage = ev => { try { applyStatus(JSON.parse(ev.data)); } catch (e) {} };
+            es.onerror = () => { /* EventSource auto-reconnects */ };
+        }
         // Playground
         function renderEffectDropdown() {
             const sel = document.getElementById('effectDropdown');
@@ -348,6 +402,13 @@
             loadScenes();
             loadTurrellColors();
             renderEffectDropdown();
+            startStatusStream();
+            const bs = document.getElementById('brightnessSlider');
+            bs.addEventListener('input', () => {
+                document.getElementById('brightnessValue').textContent = bs.value;
+            });
+            bs.addEventListener('change', () => setBrightness(bs.value));
+            document.getElementById('speedSelect').addEventListener('change', e => setSpeed(e.target.value));
         };
     </script>
 </body>

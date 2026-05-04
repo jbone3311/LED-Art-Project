@@ -5,9 +5,12 @@ import time
 
 from controller import LED_COUNT, apply_color, apply_fade
 
-# Cooperative cancellation. The web app sets this event to ask a running scene
-# to abort; long sleeps inside effects/transitions check it via _sleep().
+# Cooperative cancellation + pause. The web app drives these events; effects
+# check them in their inner loops via _sleep() / is_cancelled() / is_paused().
 cancel_event = threading.Event()
+pause_event = threading.Event()  # set => paused
+
+_SLEEP_TICK = 0.05  # max latency for cancel/pause to take effect
 
 
 def reset_cancel():
@@ -22,14 +25,41 @@ def is_cancelled():
     return cancel_event.is_set()
 
 
-def _sleep(duration):
-    """Sleep for `duration` seconds, but wake early if cancellation is requested.
+def pause():
+    pause_event.set()
 
-    Returns True if cancelled, False otherwise.
+
+def resume():
+    pause_event.clear()
+
+
+def is_paused():
+    return pause_event.is_set()
+
+
+def _sleep(duration):
+    """Sleep for `duration` seconds while honoring cancel and pause.
+
+    - If cancellation is requested, returns True immediately.
+    - If paused, parks without consuming the deadline; resumes when unpaused.
+    - Otherwise returns False after `duration` elapses.
     """
     if duration <= 0:
         return is_cancelled()
-    return cancel_event.wait(duration)
+    remaining = duration
+    while remaining > 0:
+        if cancel_event.is_set():
+            return True
+        if pause_event.is_set():
+            # Park without burning the deadline.
+            if cancel_event.wait(_SLEEP_TICK):
+                return True
+            continue
+        chunk = min(remaining, _SLEEP_TICK)
+        if cancel_event.wait(chunk):
+            return True
+        remaining -= chunk
+    return False
 
 
 # --- Effects ---
@@ -242,41 +272,93 @@ def transition_kwargs(step):
     return {k: v for k, v in step.items() if k not in _TRANSITION_RESERVED}
 
 
-def estimate_duration(steps):
+def estimate_duration(steps, speed=1.0):
     """Best-effort total runtime in seconds for a list of steps."""
-    return int(sum(s.get("duration", 2) + s.get("transition_duration", 0) for s in steps))
+    speed = max(speed, 0.01)
+    total = sum(s.get("duration", 2) + s.get("transition_duration", 0) for s in steps)
+    return int(total / speed)
 
 
-def apply_scene(strip, scene_data, on_step=None):
-    """Run a scene synchronously on the calling thread. Honors cancel_event.
+def validate_scene(scene_data):
+    """Return a list of human-readable warnings for a scene. Empty = clean."""
+    warnings = []
+    steps = scene_data.get("steps")
+    if not isinstance(steps, list) or not steps:
+        return ["scene has no steps"]
+    for idx, step in enumerate(steps, start=1):
+        if not isinstance(step, dict):
+            warnings.append(f"step {idx}: not an object")
+            continue
+        eff = step.get("effect", "solid")
+        if eff not in EFFECTS:
+            warnings.append(f"step {idx}: unknown effect {eff!r}")
+        trn = step.get("transition", "fade")
+        if trn not in TRANSITIONS:
+            warnings.append(f"step {idx}: unknown transition {trn!r}")
+    return warnings
+
+
+def _scaled_step(step, speed):
+    """Return a copy of `step` with durations divided by speed."""
+    if speed == 1.0:
+        return step
+    speed = max(speed, 0.01)
+    out = dict(step)
+    if "duration" in out:
+        out["duration"] = out["duration"] / speed
+    if "transition_duration" in out:
+        out["transition_duration"] = out["transition_duration"] / speed
+    if "cycle_s" in out:
+        out["cycle_s"] = out["cycle_s"] / speed
+    if "step_s" in out:
+        out["step_s"] = out["step_s"] / speed
+    return out
+
+
+def apply_scene(strip, scene_data, on_step=None, speed=1.0, repeat=None):
+    """Run a scene synchronously. Honors cancel_event and pause_event.
 
     `on_step(idx, step)` is invoked (1-based idx) before each step's transition
-    starts, giving callers a chance to update UI/status state.
+    starts. `speed` divides per-step durations (2.0 = twice as fast). `repeat`
+    overrides the scene's own `repeat` field; values: an int >= 1, or 0 / "forever"
+    for an infinite loop. Default is the scene's `repeat` field, or 1.
     """
     steps = scene_data.get("steps", [])
     if not steps:
         return
-    last = scene_data.get("last", steps[0].get("color", [0, 0, 0]))
-    for idx, step in enumerate(steps, start=1):
+    if repeat is None:
+        repeat = scene_data.get("repeat", 1)
+    forever = (repeat == 0) or (isinstance(repeat, str) and repeat.lower() == "forever")
+    iterations = float("inf") if forever else max(1, int(repeat))
+
+    initial_last = scene_data.get("last", steps[0].get("color", [0, 0, 0]))
+    i = 0
+    while i < iterations:
         if is_cancelled():
             return
-        if on_step is not None:
-            on_step(idx, step)
-        transition_name = step.get("transition", "fade")
-        if transition_name != "instant":
-            from_color = last
-            to_color = step.get("color", step.get("color_start", last))
-            transition_fn = TRANSITIONS.get(transition_name, transition_fade)
-            transition_fn(
-                strip,
-                from_color,
-                to_color,
-                step.get("transition_duration", 2),
-                **transition_kwargs(step),
-            )
+        last = initial_last
+        for idx, step in enumerate(steps, start=1):
             if is_cancelled():
                 return
-        effect_name = step.get("effect", "solid")
-        effect_fn = EFFECTS.get(effect_name, effect_solid)
-        effect_fn(strip, **effect_kwargs(step))
-        last = step.get("color", step.get("color_end", last))
+            if on_step is not None:
+                on_step(idx, step)
+            scaled = _scaled_step(step, speed)
+            transition_name = scaled.get("transition", "fade")
+            if transition_name != "instant":
+                from_color = last
+                to_color = scaled.get("color", scaled.get("color_start", last))
+                transition_fn = TRANSITIONS.get(transition_name, transition_fade)
+                transition_fn(
+                    strip,
+                    from_color,
+                    to_color,
+                    scaled.get("transition_duration", 2),
+                    **transition_kwargs(scaled),
+                )
+                if is_cancelled():
+                    return
+            effect_name = scaled.get("effect", "solid")
+            effect_fn = EFFECTS.get(effect_name, effect_solid)
+            effect_fn(strip, **effect_kwargs(scaled))
+            last = scaled.get("color", scaled.get("color_end", last))
+        i += 1
