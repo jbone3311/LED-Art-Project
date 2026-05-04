@@ -716,11 +716,13 @@ def apply_color(strip, color):
         strip.set_pixel(i, r, g, b)
     strip.show()
 
-def apply_fade(strip, start_color, end_color, duration):
-    """Fade from start color to end color"""
+def apply_fade(strip, start_color, end_color, duration, should_cancel=None):
+    """Fade from start color to end color. Aborts early if should_cancel() is True."""
     steps = 100
-    delay = duration / steps
+    delay = duration / steps if steps else 0
     for i in range(steps + 1):
+        if should_cancel is not None and should_cancel():
+            return
         t = i / steps
         eased = 0.5 - 0.5 * math.cos(t * math.pi)
         intermediate = [
@@ -728,4 +730,4 @@ def apply_fade(strip, start_color, end_color, duration):
             for j in range(3)
         ]
         apply_color(strip, intermediate)
-        pygame.time.delay(int(delay * 1000))  # Convert to milliseconds 
+        pygame.time.delay(int(delay * 1000))  # Convert to milliseconds

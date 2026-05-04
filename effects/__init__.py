@@ -1,44 +1,86 @@
-import json
 import math
 import random
+import threading
 import time
-from controller.led_driver import apply_color, apply_fade, LED_COUNT
 
-def effect_solid(strip, color, duration, **kwargs):
+from controller import LED_COUNT, apply_color, apply_fade
+
+# Cooperative cancellation. The web app sets this event to ask a running scene
+# to abort; long sleeps inside effects/transitions check it via _sleep().
+cancel_event = threading.Event()
+
+
+def reset_cancel():
+    cancel_event.clear()
+
+
+def cancel():
+    cancel_event.set()
+
+
+def is_cancelled():
+    return cancel_event.is_set()
+
+
+def _sleep(duration):
+    """Sleep for `duration` seconds, but wake early if cancellation is requested.
+
+    Returns True if cancelled, False otherwise.
+    """
+    if duration <= 0:
+        return is_cancelled()
+    return cancel_event.wait(duration)
+
+
+# --- Effects ---
+def effect_solid(strip, color, duration=0, **kwargs):
     apply_color(strip, color)
-    time.sleep(duration)
+    _sleep(duration)
 
-def effect_gradient(strip, color_start, color_end, duration, **kwargs):
+
+def effect_gradient(strip, color_start, color_end, duration=0, **kwargs):
     steps = LED_COUNT
     for i in range(steps):
-        t = i / (steps - 1)
+        t = i / (steps - 1) if steps > 1 else 0
         r = int(color_start[0] + (color_end[0] - color_start[0]) * t)
         g = int(color_start[1] + (color_end[1] - color_start[1]) * t)
         b = int(color_start[2] + (color_end[2] - color_start[2]) * t)
         strip.set_pixel(i, r, g, b)
     strip.show()
-    time.sleep(duration)
+    _sleep(duration)
+
 
 def effect_breathing(strip, base_color, cycle_s, duration, **kwargs):
-    steps = int(duration * 30)
-    for i in range(steps):
-        t = (i % int(cycle_s * 30)) / (cycle_s * 30)
+    frame_s = 1 / 30
+    frames_per_cycle = max(1, int(cycle_s * 30))
+    total_frames = int(duration * 30)
+    for i in range(total_frames):
+        if is_cancelled():
+            return
+        t = (i % frames_per_cycle) / frames_per_cycle
         brightness = 0.5 + 0.5 * math.sin(2 * math.pi * t)
-        color = [int(c * brightness) for c in base_color]
-        apply_color(strip, color)
-        time.sleep(1/30)
+        apply_color(strip, [int(c * brightness) for c in base_color])
+        if _sleep(frame_s):
+            return
+
 
 def effect_pulse(strip, color, speed, width_px, duration, **kwargs):
-    steps = int(duration * 30)
-    for i in range(steps):
+    frame_s = 1 / 30
+    total_frames = int(duration * 30)
+    half_width = max(1, int(width_px) // 2)
+    for i in range(total_frames):
+        if is_cancelled():
+            return
         pos = int((i * speed / 30) % LED_COUNT)
         for j in range(LED_COUNT):
-            if abs(j - pos) < width_px // 2:
+            if abs(j - pos) < half_width:
                 strip.set_pixel(j, *color)
             else:
                 strip.set_pixel(j, 0, 0, 0)
         strip.show()
-        time.sleep(1/30)
+        if _sleep(frame_s):
+            return
+
 
 def effect_strobe(strip, color, duty_cycle, tempo, duration, **kwargs):
     period = 1 / max(tempo, 0.01)
@@ -46,14 +88,22 @@ def effect_strobe(strip, color, duty_cycle, tempo, duration, **kwargs):
     off_time = period - on_time
     t_end = time.time() + duration
     while time.time() < t_end:
+        if is_cancelled():
+            return
         apply_color(strip, color)
-        time.sleep(on_time)
+        if _sleep(on_time):
+            return
         apply_color(strip, [0, 0, 0])
-        time.sleep(off_time)
+        if _sleep(off_time):
+            return
+
 
 def effect_chase(strip, color, speed, duration, **kwargs):
-    steps = int(duration * 30)
-    for i in range(steps):
+    frame_s = 1 / 30
+    total_frames = int(duration * 30)
+    for i in range(total_frames):
+        if is_cancelled():
+            return
         pos = int((i * speed / 30) % LED_COUNT)
         for j in range(LED_COUNT):
             if j == pos:
@@ -61,30 +111,42 @@ def effect_chase(strip, color, speed, duration, **kwargs):
             else:
                 strip.set_pixel(j, 0, 0, 0)
         strip.show()
-        time.sleep(1/30)
+        if _sleep(frame_s):
+            return
+
 
 # --- Transitions ---
 def transition_fade(strip, from_color, to_color, duration, **kwargs):
-    apply_fade(strip, from_color, to_color, duration)
+    apply_fade(strip, from_color, to_color, duration, should_cancel=is_cancelled)
 
-def transition_instant(strip, from_color, to_color, **kwargs):
+
+def transition_instant(strip, from_color, to_color, duration=0, **kwargs):
     apply_color(strip, to_color)
 
+
 def transition_wave(strip, from_color, to_color, duration, wavelength_px=20, speed=1, **kwargs):
-    steps = int(duration * 30)
+    frame_s = 1 / 30
+    steps = max(1, int(duration * 30))
     for t in range(steps):
+        if is_cancelled():
+            return
         for i in range(LED_COUNT):
             phase = 2 * math.pi * (i / wavelength_px - speed * t / steps)
             mix = 0.5 + 0.5 * math.sin(phase)
             color = [int(from_color[j] + (to_color[j] - from_color[j]) * mix) for j in range(3)]
             strip.set_pixel(i, *color)
         strip.show()
-        time.sleep(1/30)
+        if _sleep(frame_s):
+            return
+
 
 def transition_middle_out(strip, from_color, to_color, duration, **kwargs):
-    steps = int(duration * 30)
+    frame_s = 1 / 30
+    steps = max(1, int(duration * 30))
     mid = LED_COUNT // 2
     for t in range(steps):
+        if is_cancelled():
+            return
         spread = int((t / steps) * mid)
         for i in range(LED_COUNT):
             if abs(i - mid) <= spread:
@@ -92,78 +154,115 @@ def transition_middle_out(strip, from_color, to_color, duration, **kwargs):
             else:
                 strip.set_pixel(i, *from_color)
         strip.show()
-        time.sleep(1/30)
+        if _sleep(frame_s):
+            return
+
 
 def transition_random_shimmer(strip, from_color, to_color, duration, jitter_pct=0.05, **kwargs):
-    steps = int(duration * 30)
+    frame_s = 1 / 30
+    steps = max(1, int(duration * 30))
     for t in range(steps):
+        if is_cancelled():
+            return
+        mix = t / steps
+        base = [int(from_color[j] + (to_color[j] - from_color[j]) * mix) for j in range(3)]
         for i in range(LED_COUNT):
-            mix = t / steps
-            base = [int(from_color[j] + (to_color[j] - from_color[j]) * mix) for j in range(3)]
-            jitter = [min(255, max(0, int(c + random.uniform(-jitter_pct, jitter_pct) * 255))) for c in base]
+            jitter = [
+                min(255, max(0, int(c + random.uniform(-jitter_pct, jitter_pct) * 255)))
+                for c in base
+            ]
             strip.set_pixel(i, *jitter)
         strip.show()
-        time.sleep(1/30)
+        if _sleep(frame_s):
+            return
+
 
 def transition_patterned_fade(strip, from_color, to_color, duration, palette=None, step_s=1, **kwargs):
     if not palette:
         palette = [from_color, to_color]
-    steps = int(duration / step_s)
+    steps = max(1, int(duration / max(step_s, 0.01)))
     for i in range(steps):
-        color = palette[i % len(palette)]
-        apply_color(strip, color)
-        time.sleep(step_s)
+        if is_cancelled():
+            return
+        apply_color(strip, palette[i % len(palette)])
+        if _sleep(step_s):
+            return
     apply_color(strip, to_color)
 
+
 def transition_brightness_sweep(strip, from_color, to_color, duration, min_b=8, max_b=20, **kwargs):
-    steps = int(duration * 30)
+    frame_s = 1 / 30
+    steps = max(1, int(duration * 30))
     for t in range(steps):
+        if is_cancelled():
+            return
         brightness = int(min_b + (max_b - min_b) * 0.5 * (1 - math.cos(math.pi * t / steps)))
         color = [int(from_color[j] + (to_color[j] - from_color[j]) * (t / steps)) for j in range(3)]
-        # This assumes the strip object has a set_global_brightness method
         if hasattr(strip, 'set_global_brightness'):
             strip.set_global_brightness(brightness)
         apply_color(strip, color)
-        time.sleep(1/30)
+        if _sleep(frame_s):
+            return
     if hasattr(strip, 'set_global_brightness'):
         strip.set_global_brightness(max_b)
     apply_color(strip, to_color)
 
-# --- Effect and transition registry ---
-effects = {
+
+# --- Registries (renamed to avoid shadowing the package name `effects`) ---
+EFFECTS = {
     "solid": effect_solid,
     "gradient": effect_gradient,
     "breathing": effect_breathing,
     "pulse": effect_pulse,
     "strobe": effect_strobe,
-    "chase": effect_chase
+    "chase": effect_chase,
 }
-transitions = {
+
+TRANSITIONS = {
     "fade": transition_fade,
     "instant": transition_instant,
     "wave": transition_wave,
     "middle-out": transition_middle_out,
     "random_shimmer": transition_random_shimmer,
     "patterned_fade": transition_patterned_fade,
-    "brightness_sweep": transition_brightness_sweep
+    "brightness_sweep": transition_brightness_sweep,
 }
 
+
+_STEP_RESERVED = {"effect", "transition", "transition_duration", "narrative", "step"}
+_TRANSITION_RESERVED = {"effect", "duration", "narrative", "step"}
+
+
+def _effect_kwargs(step):
+    return {k: v for k, v in step.items() if k not in _STEP_RESERVED}
+
+
+def _transition_kwargs(step):
+    return {k: v for k, v in step.items() if k not in _TRANSITION_RESERVED}
+
+
 def apply_scene(strip, scene_data):
+    """Run a scene synchronously on the calling thread. Honors cancel_event."""
     steps = scene_data.get("steps", [])
-    last = scene_data.get("last", steps[0].get("color", [0,0,0]) if steps else [0,0,0])
+    if not steps:
+        return
+    last = scene_data.get("last", steps[0].get("color", [0, 0, 0]))
     for step in steps:
+        if is_cancelled():
+            return
         effect_name = step.get("effect", "solid")
-        effect = effects.get(effect_name, effect_solid)
         transition_name = step.get("transition", "fade")
-        transition = transitions.get(transition_name, transition_fade)
-        # Get effect/transition params
-        effect_kwargs = {k: v for k, v in step.items() if k not in ("effect", "transition", "transition_duration")}
-        transition_kwargs = {k: v for k, v in step.items() if k not in ("effect", "duration")}
-        # Run transition from last to this effect's color
+        effect_fn = EFFECTS.get(effect_name, effect_solid)
+        transition_fn = TRANSITIONS.get(transition_name, transition_fade)
         if transition_name != "instant":
             from_color = last
             to_color = step.get("color", step.get("color_start", last))
-            transition(strip, from_color, to_color, step.get("transition_duration", 2), **transition_kwargs)
-        # Run effect
-        effect(strip, **effect_kwargs)
+            transition_fn(
+                strip,
+                from_color,
+                to_color,
+                step.get("transition_duration", 2),
+                **_transition_kwargs(step),
+            )
+        effect_fn(strip, **_effect_kwargs(step))
         last = step.get("color", step.get("color_end", last))

@@ -49,6 +49,7 @@
             <div class="desc" id="sceneDesc"></div>
             <div class="actions">
                 <button onclick="playScene()">Play</button>
+                <button onclick="stopScene()">Stop</button>
                 <button onclick="refreshScenes()">Refresh</button>
             </div>
             <label for="colorPicker">Quick Color:</label>
@@ -132,6 +133,9 @@
                 body: JSON.stringify({ filename })
             });
         }
+        function stopScene() {
+            fetch('/stop', { method: 'POST' });
+        }
         function refreshScenes() { loadScenes(); }
         function loadTurrellColors() {
             fetch('/static/turrell_colors.json').then(r => r.json()).then(data => {
@@ -193,6 +197,9 @@
                 // Render all info
                 let info = '';
                 if (s.running) {
+                    if (s.narrative_intro) {
+                        info += `<div style='margin-bottom:0.6em; color:#9ad1ff;'><i>${s.narrative_intro}</i></div>`;
+                    }
                     info += `<b>Step:</b> ${s.step || 1}<br>`;
                     info += `<b>Effect:</b> ${s.current_effect || ''}<br>`;
                     info += `<b>Transition:</b> ${s.current_transition || ''}<br>`;
