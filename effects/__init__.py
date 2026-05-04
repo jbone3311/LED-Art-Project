@@ -1,3 +1,4 @@
+import colorsys
 import math
 import random
 import threading
@@ -145,6 +146,117 @@ def effect_chase(strip, color, speed, duration, **kwargs):
             return
 
 
+def effect_rainbow(strip, duration=10, speed=0.2, saturation=1.0, value=1.0, **kwargs):
+    """HSV cycle across the whole strip. `speed` is cycles per second."""
+    frame_s = 1 / 30
+    total_frames = int(duration * 30)
+    for f in range(total_frames):
+        if is_cancelled():
+            return
+        offset = (f * speed / 30) % 1.0
+        for i in range(LED_COUNT):
+            h = (i / LED_COUNT + offset) % 1.0
+            r, g, b = colorsys.hsv_to_rgb(h, saturation, value)
+            strip.set_pixel(i, int(r * 255), int(g * 255), int(b * 255))
+        strip.show()
+        if _sleep(frame_s):
+            return
+
+
+def effect_twinkle(strip, color, rate=30, decay=0.9, duration=10, **kwargs):
+    """Random pixels light up and decay. `rate` is new sparkles per second."""
+    frame_s = 1 / 30
+    total_frames = int(duration * 30)
+    brightness = [0.0] * LED_COUNT
+    p_per_pixel = max(0.0, rate) / 30 / max(1, LED_COUNT)
+    decay = max(0.0, min(1.0, decay))
+    for f in range(total_frames):
+        if is_cancelled():
+            return
+        for i in range(LED_COUNT):
+            if random.random() < p_per_pixel:
+                brightness[i] = 1.0
+            else:
+                brightness[i] *= decay
+            b = brightness[i]
+            strip.set_pixel(i, int(color[0] * b), int(color[1] * b), int(color[2] * b))
+        strip.show()
+        if _sleep(frame_s):
+            return
+
+
+def effect_comet(strip, color, speed=30, tail_px=20, duration=10, **kwargs):
+    """A bright head moves along the strip, leaving a fading tail."""
+    frame_s = 1 / 30
+    total_frames = int(duration * 30)
+    tail_px = max(1, int(tail_px))
+    for f in range(total_frames):
+        if is_cancelled():
+            return
+        head = (f * speed / 30) % LED_COUNT
+        for i in range(LED_COUNT):
+            d = (head - i) % LED_COUNT
+            if d > tail_px:
+                strip.set_pixel(i, 0, 0, 0)
+            else:
+                fade = 1.0 - d / tail_px
+                strip.set_pixel(i, int(color[0] * fade), int(color[1] * fade), int(color[2] * fade))
+        strip.show()
+        if _sleep(frame_s):
+            return
+
+
+def effect_fire(strip, duration=10, intensity=1.0, cooling=0.05, sparking=0.6, **kwargs):
+    """Random flickering fire-palette effect, base at index 0."""
+    frame_s = 1 / 30
+    total_frames = int(duration * 30)
+    heat = [0.0] * LED_COUNT
+    for f in range(total_frames):
+        if is_cancelled():
+            return
+        for i in range(LED_COUNT):
+            heat[i] = max(0.0, heat[i] - cooling * random.random())
+        for i in range(LED_COUNT - 1, 1, -1):
+            heat[i] = (heat[i - 1] + heat[i - 2] + heat[i - 2]) / 3
+        if random.random() < sparking:
+            j = random.randint(0, min(7, LED_COUNT - 1))
+            heat[j] = min(1.0, heat[j] + 0.6 + 0.4 * random.random())
+        for i in range(LED_COUNT):
+            h = max(0.0, min(1.0, heat[i] * intensity))
+            if h < 0.33:
+                t = h / 0.33
+                r, g, b = int(255 * t), 0, 0
+            elif h < 0.66:
+                t = (h - 0.33) / 0.33
+                r, g, b = 255, int(165 * t), 0
+            else:
+                t = (h - 0.66) / 0.34
+                r, g, b = 255, 165 + int(90 * t), int(255 * t)
+            strip.set_pixel(i, r, g, b)
+        strip.show()
+        if _sleep(frame_s):
+            return
+
+
+def effect_theater_chase(strip, color, gap=3, speed=10, duration=10, **kwargs):
+    """Every Nth pixel lit; the pattern advances at `speed` shifts/sec."""
+    frame_s = 1 / 30
+    total_frames = int(duration * 30)
+    gap = max(2, int(gap))
+    for f in range(total_frames):
+        if is_cancelled():
+            return
+        offset = int(f * speed / 30) % gap
+        for i in range(LED_COUNT):
+            if (i + offset) % gap == 0:
+                strip.set_pixel(i, *color)
+            else:
+                strip.set_pixel(i, 0, 0, 0)
+        strip.show()
+        if _sleep(frame_s):
+            return
+
+
 # --- Transitions ---
 def transition_fade(strip, from_color, to_color, duration, **kwargs):
     apply_fade(strip, from_color, to_color, duration, should_cancel=is_cancelled)
@@ -220,6 +332,45 @@ def transition_patterned_fade(strip, from_color, to_color, duration, palette=Non
     apply_color(strip, to_color)
 
 
+def transition_slide(strip, from_color, to_color, duration, direction=1, **kwargs):
+    """to_color slides in from one end. direction > 0 = from index 0; <= 0 = from end."""
+    frame_s = 1 / 30
+    steps = max(1, int(duration * 30))
+    forward = (direction > 0)
+    for t in range(steps + 1):
+        if is_cancelled():
+            return
+        boundary = int(t / steps * LED_COUNT)
+        for i in range(LED_COUNT):
+            in_new = (i < boundary) if forward else (i >= LED_COUNT - boundary)
+            color = to_color if in_new else from_color
+            strip.set_pixel(i, *color)
+        strip.show()
+        if _sleep(frame_s):
+            return
+
+
+def transition_dissolve(strip, from_color, to_color, duration, **kwargs):
+    """Pixels swap from from_color to to_color in a random order."""
+    frame_s = 1 / 30
+    steps = max(1, int(duration * 30))
+    indices = list(range(LED_COUNT))
+    random.shuffle(indices)
+    for i in range(LED_COUNT):
+        strip.set_pixel(i, *from_color)
+    strip.show()
+    for t in range(1, steps + 1):
+        if is_cancelled():
+            return
+        target = int(t / steps * LED_COUNT)
+        for rank, idx in enumerate(indices):
+            color = to_color if rank < target else from_color
+            strip.set_pixel(idx, *color)
+        strip.show()
+        if _sleep(frame_s):
+            return
+
+
 def transition_brightness_sweep(strip, from_color, to_color, duration, min_b=8, max_b=20, **kwargs):
     frame_s = 1 / 30
     steps = max(1, int(duration * 30))
@@ -246,6 +397,11 @@ EFFECTS = {
     "pulse": effect_pulse,
     "strobe": effect_strobe,
     "chase": effect_chase,
+    "rainbow": effect_rainbow,
+    "twinkle": effect_twinkle,
+    "comet": effect_comet,
+    "fire": effect_fire,
+    "theater_chase": effect_theater_chase,
 }
 
 TRANSITIONS = {
@@ -256,6 +412,8 @@ TRANSITIONS = {
     "random_shimmer": transition_random_shimmer,
     "patterned_fade": transition_patterned_fade,
     "brightness_sweep": transition_brightness_sweep,
+    "slide": transition_slide,
+    "dissolve": transition_dissolve,
 }
 
 

@@ -105,8 +105,17 @@
             {name: 'breathing', params: ['base_color', 'cycle_s', 'duration']},
             {name: 'pulse', params: ['color', 'speed', 'width_px', 'duration']},
             {name: 'strobe', params: ['color', 'duty_cycle', 'tempo', 'duration']},
-            {name: 'chase', params: ['color', 'speed', 'duration']}
+            {name: 'chase', params: ['color', 'speed', 'duration']},
+            {name: 'rainbow', params: ['duration', 'speed']},
+            {name: 'twinkle', params: ['color', 'rate', 'decay', 'duration']},
+            {name: 'comet', params: ['color', 'speed', 'tail_px', 'duration']},
+            {name: 'fire', params: ['duration', 'intensity']},
+            {name: 'theater_chase', params: ['color', 'gap', 'speed', 'duration']}
         ];
+        const NUMERIC_PARAM_HINTS = ['duration','speed','cycle','width','step','min_b','max_b','jitter','rate','decay','tail','gap','intensity','tempo','duty','wavelength'];
+        function isNumberParam(name) {
+            return NUMERIC_PARAM_HINTS.some(h => name.includes(h));
+        }
         let turrellColors = [];
         function showTab(tab) {
             document.getElementById('showTabContent').classList.toggle('active', tab==='show');
@@ -324,7 +333,7 @@
                     form.appendChild(colorDiv);
                 } else {
                     let input = document.createElement('input');
-                    if (param.includes('duration') || param.includes('speed') || param.includes('cycle') || param.includes('width') || param.includes('step') || param.includes('min_b') || param.includes('max_b') || param.includes('jitter')) {
+                    if (isNumberParam(param)) {
                         input.type = 'number';
                         input.step = 'any';
                     } else {
@@ -347,7 +356,7 @@
                         params[param] = hexToRgb(colorVal);
                     } else {
                         let val = form[param].value;
-                        if (param.includes('duration') || param.includes('speed') || param.includes('cycle') || param.includes('width') || param.includes('step') || param.includes('min_b') || param.includes('max_b') || param.includes('jitter')) {
+                        if (isNumberParam(param)) {
                             val = parseFloat(val);
                         }
                         params[param] = val;
@@ -380,6 +389,11 @@
                     <li><b>pulse</b>: A moving bright spot of color.</li>
                     <li><b>strobe</b>: Rapid flashing of a color.</li>
                     <li><b>chase</b>: A single moving pixel of color.</li>
+                    <li><b>rainbow</b>: HSV cycle across the whole strip.</li>
+                    <li><b>twinkle</b>: Random sparkles that decay.</li>
+                    <li><b>comet</b>: Bright head with a fading tail.</li>
+                    <li><b>fire</b>: Random flickering fire palette.</li>
+                    <li><b>theater_chase</b>: Every Nth pixel lit; pattern advances.</li>
                 </ul>`;
             } else if (type === 'transitions') {
                 html = `<h2>Transitions</h2><ul>
@@ -390,6 +404,8 @@
                     <li><b>random_shimmer</b>: Adds noise during fade for a shimmering effect.</li>
                     <li><b>patterned_fade</b>: Steps through a palette of colors.</li>
                     <li><b>brightness_sweep</b>: Global brightness ramp up or down.</li>
+                    <li><b>slide</b>: New color slides in from one end.</li>
+                    <li><b>dissolve</b>: Pixels swap to the new color in random order.</li>
                 </ul>`;
             }
             document.getElementById('helpContent').innerHTML = html;
