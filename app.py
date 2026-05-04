@@ -8,7 +8,7 @@ import time
 from flask import Flask, Response, jsonify, render_template, request, send_from_directory
 
 import effects
-from controller import apply_color, apply_fade, init_strip
+from controller import apply_color, apply_fade, get_pixels, init_strip
 
 app = Flask(__name__)
 strip = init_strip()
@@ -185,6 +185,25 @@ def apply_scene_file():
 def get_status():
     with status_lock:
         return jsonify(dict(status))
+
+
+@app.route('/pixels', methods=['GET'])
+def pixels_now():
+    return jsonify(get_pixels())
+
+
+@app.route('/pixels_stream')
+def pixels_stream():
+    """Server-Sent Events stream of the LED buffer for the browser preview."""
+    def gen():
+        last = None
+        while True:
+            snap = get_pixels()
+            if snap != last:
+                yield f"data: {json.dumps(snap)}\n\n"
+                last = snap
+            time.sleep(0.05)  # 20 Hz cap
+    return Response(gen(), mimetype='text/event-stream')
 
 
 @app.route('/status_stream')
