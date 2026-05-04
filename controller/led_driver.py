@@ -1,6 +1,6 @@
 from apa102_pi.driver.apa102 import APA102
-import time
 import math
+import time
 
 LED_COUNT = 144
 GLOBAL_BRIGHTNESS = 31
@@ -8,10 +8,12 @@ SPI_SPEED_HZ = 12000000
 
 strip = None
 
+
 def init_strip():
     global strip
     strip = APA102(num_led=LED_COUNT, global_brightness=GLOBAL_BRIGHTNESS, bus_speed_hz=SPI_SPEED_HZ)
     return strip
+
 
 def apply_color(strip, color):
     r, g, b = color
@@ -19,10 +21,15 @@ def apply_color(strip, color):
         strip.set_pixel(i, r, g, b)
     strip.show()
 
-def apply_fade(strip, start_color, end_color, duration):
+
+def apply_fade(strip, start_color, end_color, duration, should_cancel=None):
+    """Cosine-eased crossfade. If `should_cancel` is provided and returns True
+    during the fade, the fade aborts immediately."""
     steps = 100
-    delay = duration / steps
+    delay = duration / steps if steps else 0
     for i in range(steps + 1):
+        if should_cancel is not None and should_cancel():
+            return
         t = i / steps
         eased = 0.5 - 0.5 * math.cos(t * math.pi)
         intermediate = [
