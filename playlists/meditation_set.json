@@ -1,0 +1,9 @@
+{
+  "name": "Meditation Set",
+  "description": "Three Turrell-style scenes back to back, easing from awakening into deep stillness.",
+  "items": [
+    {"scene": "aurora_journey.json"},
+    {"scene": "turrell_meditation.json"},
+    {"scene": "colorfield_poem.json"}
+  ]
+}

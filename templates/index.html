@@ -56,6 +56,12 @@
                 <button onclick="stopScene()">Stop</button>
                 <button onclick="refreshScenes()">Refresh</button>
             </div>
+            <label for="playlistSelect">Playlists:</label>
+            <select id="playlistSelect"><option value="">(none available)</option></select>
+            <div class="desc" id="playlistDesc"></div>
+            <div class="actions">
+                <button onclick="playPlaylist()">Play Playlist</button>
+            </div>
             <div class="settings">
                 <label for="brightnessSlider">Brightness: <span id="brightnessValue">31</span> / 31</label>
                 <input type="range" id="brightnessSlider" min="0" max="31" value="31" style="width:100%;">
@@ -161,6 +167,47 @@
                 body: JSON.stringify({ filename })
             });
         }
+        let playlists = [];
+        function loadPlaylists() {
+            fetch('/playlists').then(r => r.json()).then(data => {
+                playlists = data;
+                const sel = document.getElementById('playlistSelect');
+                sel.innerHTML = '';
+                if (!data.length) {
+                    const opt = document.createElement('option');
+                    opt.value = ''; opt.textContent = '(none available)';
+                    sel.appendChild(opt);
+                } else {
+                    data.forEach(pl => {
+                        const opt = document.createElement('option');
+                        opt.value = pl.filename;
+                        opt.textContent = `${pl.name} (${pl.item_count} scenes)`;
+                        sel.appendChild(opt);
+                    });
+                }
+                showPlaylistDesc();
+            });
+        }
+        function showPlaylistDesc() {
+            const sel = document.getElementById('playlistSelect');
+            const pl = playlists[sel.selectedIndex] || null;
+            const desc = document.getElementById('playlistDesc');
+            if (!pl) { desc.textContent = ''; return; }
+            let html = pl.description || '';
+            if (pl.warnings && pl.warnings.length) {
+                html += `<div style="color:#ffb347; margin-top:0.3em;">⚠ ${pl.warnings.join('; ')}</div>`;
+            }
+            desc.innerHTML = html;
+        }
+        function playPlaylist() {
+            const sel = document.getElementById('playlistSelect');
+            if (!sel.value) return;
+            fetch('/apply_playlist', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filename: sel.value })
+            });
+        }
         function stopScene() {
             fetch('/stop', { method: 'POST' });
         }
@@ -256,9 +303,13 @@
             }
             let info = '';
             if (s.running) {
+                if (s.playlist) {
+                    info += `<div style='margin-bottom:0.4em; color:#c4a3ff;'><b>Playlist:</b> ${s.playlist} — scene ${s.playlist_step}/${s.playlist_total}</div>`;
+                }
                 if (s.narrative_intro) {
                     info += `<div style='margin-bottom:0.6em; color:#9ad1ff;'><i>${s.narrative_intro}</i></div>`;
                 }
+                info += `<b>Scene:</b> ${s.scene || ''}<br>`;
                 info += `<b>Step:</b> ${s.step || 1}<br>`;
                 info += `<b>Effect:</b> ${s.current_effect || ''}<br>`;
                 info += `<b>Transition:</b> ${s.current_transition || ''}<br>`;
@@ -440,10 +491,12 @@
         }
         window.onload = function() {
             loadScenes();
+            loadPlaylists();
             loadTurrellColors();
             renderEffectDropdown();
             startStatusStream();
             startPixelStream();
+            document.getElementById('playlistSelect').addEventListener('change', showPlaylistDesc);
             const bs = document.getElementById('brightnessSlider');
             bs.addEventListener('input', () => {
                 document.getElementById('brightnessValue').textContent = bs.value;

@@ -15,7 +15,9 @@ strip = init_strip()
 
 BASE_DIR = os.path.dirname(__file__)
 SCENES_DIR = os.path.join(BASE_DIR, 'scenes')
+PLAYLISTS_DIR = os.path.join(BASE_DIR, 'playlists')
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
+os.makedirs(PLAYLISTS_DIR, exist_ok=True)
 
 # Make turrell_colors.json available under /static for the UI dropdown.
 os.makedirs(STATIC_DIR, exist_ok=True)
@@ -41,6 +43,9 @@ def _idle_status():
         'step_params': None,
         'speed': 1.0,
         'brightness': 31,
+        'playlist': None,
+        'playlist_step': 0,
+        'playlist_total': 0,
     }
 
 
@@ -56,40 +61,57 @@ def _set_status(**fields):
         status.update(fields)
 
 
-def run_scene_thread(scene_data, speed):
-    steps = scene_data.get('steps', [])
-    start_time = time.time()
+def run_items_thread(items, playlist_name, speed):
+    """Run a list of {'scene': scene_data, 'repeat': N|None} items in sequence."""
     _set_status(
         running=True,
         paused=False,
-        scene=scene_data.get('name', 'Unnamed'),
-        total_steps=len(steps),
-        duration=effects.estimate_duration(steps, speed=speed),
-        narrative_intro=scene_data.get('narrative_intro'),
+        playlist=playlist_name,
+        playlist_total=len(items),
         speed=speed,
     )
-
-    def on_step(idx, step):
-        _set_status(
-            step=idx,
-            current_effect=step.get('effect', 'solid'),
-            current_transition=step.get('transition', 'fade'),
-            elapsed=int(time.time() - start_time),
-            narrative=step.get('narrative'),
-            step_params=effects.effect_kwargs(step),
-        )
-
     try:
-        effects.apply_scene(strip, scene_data, on_step=on_step, speed=speed)
+        for pidx, item in enumerate(items, start=1):
+            if effects.is_cancelled():
+                break
+            scene_data = item['scene']
+            steps = scene_data.get('steps', [])
+            start_time = time.time()
+            _set_status(
+                playlist_step=pidx,
+                scene=scene_data.get('name', 'Unnamed'),
+                total_steps=len(steps),
+                duration=effects.estimate_duration(steps, speed=speed),
+                narrative_intro=scene_data.get('narrative_intro'),
+            )
+
+            def on_step(idx, step, _start=start_time):
+                _set_status(
+                    step=idx,
+                    current_effect=step.get('effect', 'solid'),
+                    current_transition=step.get('transition', 'fade'),
+                    elapsed=int(time.time() - _start),
+                    narrative=step.get('narrative'),
+                    step_params=effects.effect_kwargs(step),
+                )
+
+            effects.apply_scene(
+                strip, scene_data,
+                on_step=on_step,
+                speed=speed,
+                repeat=item.get('repeat'),
+            )
     finally:
         with status_lock:
             preserved_brightness = status.get('brightness', 31)
+            preserved_speed = status.get('speed', 1.0)
             status.update(_idle_status())
             status['brightness'] = preserved_brightness
+            status['speed'] = preserved_speed
 
 
-def _start_scene(scene_data):
-    """Launch a scene in a background thread. Returns (ok, error_message)."""
+def _start_run(items, playlist_name=None):
+    """Launch a sequence of scenes in a background thread."""
     global scene_thread
     with status_lock:
         if scene_thread is not None and scene_thread.is_alive():
@@ -98,12 +120,16 @@ def _start_scene(scene_data):
         effects.resume()
         speed = float(status.get('speed') or 1.0)
         scene_thread = threading.Thread(
-            target=run_scene_thread,
-            args=(scene_data, speed),
+            target=run_items_thread,
+            args=(items, playlist_name, speed),
             daemon=True,
         )
         scene_thread.start()
     return True, None
+
+
+def _start_scene(scene_data):
+    return _start_run([{'scene': scene_data}], None)
 
 
 def _set_brightness(value):
@@ -179,6 +205,73 @@ def apply_scene_file():
     if not ok:
         return jsonify({'error': err}), 409
     return jsonify({'status': 'scene started'})
+
+
+def _safe_filename(name):
+    return bool(name) and name.endswith('.json') and os.sep not in name and '/' not in name and not name.startswith('.')
+
+
+@app.route('/playlists', methods=['GET'])
+def list_playlists():
+    if not os.path.isdir(PLAYLISTS_DIR):
+        return jsonify([])
+    files = sorted(f for f in os.listdir(PLAYLISTS_DIR) if f.endswith('.json'))
+    out = []
+    for fname in files:
+        try:
+            with open(os.path.join(PLAYLISTS_DIR, fname)) as f:
+                data = json.load(f)
+        except (OSError, json.JSONDecodeError) as e:
+            out.append({'filename': fname, 'name': fname, 'description': '', 'item_count': 0, 'warnings': [f'parse error: {e}']})
+            continue
+        items = data.get('items', []) or []
+        warnings = []
+        for i, it in enumerate(items, start=1):
+            sc = it.get('scene') if isinstance(it, dict) else None
+            if not sc:
+                warnings.append(f'item {i}: missing "scene"')
+            elif not os.path.isfile(os.path.join(SCENES_DIR, sc)):
+                warnings.append(f'item {i}: scene {sc!r} not found')
+        out.append({
+            'filename': fname,
+            'name': data.get('name', fname),
+            'description': data.get('description', ''),
+            'item_count': len(items),
+            'warnings': warnings,
+        })
+    return jsonify(out)
+
+
+@app.route('/apply_playlist', methods=['POST'])
+def apply_playlist():
+    data = request.json or {}
+    filename = data.get('filename')
+    if not _safe_filename(filename):
+        return jsonify({'error': 'Invalid filename'}), 400
+    path = os.path.join(PLAYLISTS_DIR, filename)
+    if not os.path.isfile(path):
+        return jsonify({'error': 'Playlist not found'}), 404
+    with open(path) as f:
+        playlist = json.load(f)
+    items = []
+    for item in (playlist.get('items') or []):
+        if not isinstance(item, dict):
+            continue
+        scene_filename = item.get('scene')
+        if not _safe_filename(scene_filename):
+            return jsonify({'error': f'Invalid scene filename: {scene_filename!r}'}), 400
+        spath = os.path.join(SCENES_DIR, scene_filename)
+        if not os.path.isfile(spath):
+            return jsonify({'error': f'Scene {scene_filename!r} not found'}), 404
+        with open(spath) as sf:
+            scene_data = json.load(sf)
+        items.append({'scene': scene_data, 'repeat': item.get('repeat')})
+    if not items:
+        return jsonify({'error': 'Playlist has no playable items'}), 400
+    ok, err = _start_run(items, playlist.get('name', filename))
+    if not ok:
+        return jsonify({'error': err}), 409
+    return jsonify({'status': 'playlist started'})
 
 
 @app.route('/status', methods=['GET'])
