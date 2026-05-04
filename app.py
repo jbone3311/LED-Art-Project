@@ -315,6 +315,29 @@ def status_stream():
     return Response(gen(), mimetype='text/event-stream')
 
 
+@app.route('/save_scene', methods=['POST'])
+def save_scene():
+    """Save a scene JSON to scenes/. Validates structure; refuses overwrite
+    unless `overwrite: true` is set."""
+    data = request.json or {}
+    filename = data.get('filename', '')
+    scene_data = data.get('data')
+    overwrite = bool(data.get('overwrite'))
+    if not _safe_filename(filename):
+        return jsonify({'error': 'Invalid filename (must end in .json, no path separators)'}), 400
+    if not isinstance(scene_data, dict):
+        return jsonify({'error': '"data" must be an object'}), 400
+    warnings = effects.validate_scene(scene_data)
+    if warnings:
+        return jsonify({'error': 'Scene validation failed', 'warnings': warnings}), 400
+    path = os.path.join(SCENES_DIR, filename)
+    if os.path.exists(path) and not overwrite:
+        return jsonify({'error': 'File exists', 'exists': True}), 409
+    with open(path, 'w') as f:
+        json.dump(scene_data, f, indent=2)
+    return jsonify({'status': 'saved', 'filename': filename})
+
+
 @app.route('/run_effect', methods=['POST'])
 def run_effect():
     data = request.json or {}

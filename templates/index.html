@@ -32,6 +32,7 @@
         <div class="tabs">
             <div class="tab active" id="tabShow" onclick="showTab('show')">Show Control</div>
             <div class="tab" id="tabPlayground" onclick="showTab('playground')">Playground</div>
+            <div class="tab" id="tabEditor" onclick="showTab('editor')">Editor</div>
         </div>
         <div class="tab-content active" id="showTabContent">
             <div id="statusDisplay">
@@ -98,6 +99,30 @@
                 <div class="feedback" id="effectFeedback"></div>
             </div>
         </div>
+        <div class="tab-content" id="editorTabContent">
+            <h2>Scene Editor</h2>
+            <label>Filename (must end in .json)</label>
+            <input type="text" id="edFilename" placeholder="my_show.json">
+            <label>Name</label>
+            <input type="text" id="edName" placeholder="My Show">
+            <label>Description</label>
+            <input type="text" id="edDescription">
+            <label>Narrative intro (optional)</label>
+            <input type="text" id="edNarrativeIntro">
+            <label>Repeat (1, or 0 / "forever" for endless)</label>
+            <input type="text" id="edRepeat" value="1">
+            <h3 style="margin-top:1.2em;">Steps</h3>
+            <div id="edStepsList"></div>
+            <div class="actions">
+                <button onclick="edAddStep()">+ Add Step</button>
+            </div>
+            <div class="actions">
+                <button onclick="edPreview()">Preview (don't save)</button>
+                <button onclick="edSave(false)">Save</button>
+                <button onclick="edSave(true)">Save (overwrite)</button>
+            </div>
+            <div class="feedback" id="edFeedback"></div>
+        </div>
     </div>
     <!-- Add modal for help -->
     <div id="helpModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center;">
@@ -129,8 +154,10 @@
         function showTab(tab) {
             document.getElementById('showTabContent').classList.toggle('active', tab==='show');
             document.getElementById('playgroundTabContent').classList.toggle('active', tab==='playground');
+            document.getElementById('editorTabContent').classList.toggle('active', tab==='editor');
             document.getElementById('tabShow').classList.toggle('active', tab==='show');
             document.getElementById('tabPlayground').classList.toggle('active', tab==='playground');
+            document.getElementById('tabEditor').classList.toggle('active', tab==='editor');
         }
         function loadScenes() {
             fetch('/scenes').then(r => r.json()).then(data => {
@@ -453,6 +480,158 @@
             };
         }
         document.getElementById('sceneSelect').addEventListener('change', showDesc);
+
+        // ===== Scene Editor =====
+        const TRANSITIONS = ['fade','instant','wave','middle-out','random_shimmer','patterned_fade','brightness_sweep','slide','dissolve'];
+        let edSteps = [];
+        function edAddStep() {
+            edSteps.push({effect: 'solid', transition: 'fade', color: [80,120,255], duration: 5, transition_duration: 2, narrative: ''});
+            edRender();
+        }
+        function edRemoveStep(i) { edSteps.splice(i, 1); edRender(); }
+        function edMoveStep(i, dir) {
+            const j = i + dir;
+            if (j < 0 || j >= edSteps.length) return;
+            [edSteps[i], edSteps[j]] = [edSteps[j], edSteps[i]];
+            edRender();
+        }
+        function edDuplicateStep(i) {
+            edSteps.splice(i + 1, 0, JSON.parse(JSON.stringify(edSteps[i])));
+            edRender();
+        }
+        function edParamsForEffect(name) {
+            return (effects.find(e => e.name === name) || {params:[]}).params;
+        }
+        function edRender() {
+            const list = document.getElementById('edStepsList');
+            list.innerHTML = '';
+            edSteps.forEach((step, i) => {
+                const card = document.createElement('div');
+                card.style.cssText = 'background:#202225; padding:0.8em; margin-bottom:0.6em; border-radius:0.5em;';
+                card.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;">
+                    <b>Step ${i+1}</b>
+                    <span>
+                        <button type="button" onclick="edMoveStep(${i},-1)">↑</button>
+                        <button type="button" onclick="edMoveStep(${i},1)">↓</button>
+                        <button type="button" onclick="edDuplicateStep(${i})">Dup</button>
+                        <button type="button" onclick="edRemoveStep(${i})" style="background:#5a2222;">×</button>
+                    </span>
+                </div>`;
+                // Effect select
+                const effLabel = document.createElement('label'); effLabel.textContent = 'Effect';
+                const effSel = document.createElement('select');
+                effects.forEach(e => {
+                    const o = document.createElement('option'); o.value = e.name; o.textContent = e.name; effSel.appendChild(o);
+                });
+                effSel.value = step.effect;
+                effSel.onchange = () => { step.effect = effSel.value; edRender(); };
+                card.appendChild(effLabel); card.appendChild(effSel);
+                // Transition select
+                const trLabel = document.createElement('label'); trLabel.textContent = 'Transition';
+                const trSel = document.createElement('select');
+                TRANSITIONS.forEach(t => {
+                    const o = document.createElement('option'); o.value = t; o.textContent = t; trSel.appendChild(o);
+                });
+                trSel.value = step.transition;
+                trSel.onchange = () => { step.transition = trSel.value; };
+                card.appendChild(trLabel); card.appendChild(trSel);
+                // Effect-specific params
+                edParamsForEffect(step.effect).forEach(param => {
+                    const lbl = document.createElement('label'); lbl.textContent = param;
+                    card.appendChild(lbl);
+                    if (param.includes('color') || param === 'base_color') {
+                        const cur = step[param] || [255,255,255];
+                        const inp = document.createElement('input');
+                        inp.type = 'color'; inp.value = rgbToHex(cur);
+                        inp.oninput = () => { step[param] = hexToRgb(inp.value); };
+                        card.appendChild(inp);
+                    } else {
+                        const inp = document.createElement('input');
+                        inp.type = isNumberParam(param) ? 'number' : 'text';
+                        if (inp.type === 'number') inp.step = 'any';
+                        if (step[param] != null) inp.value = step[param];
+                        inp.oninput = () => {
+                            step[param] = inp.type === 'number' ? parseFloat(inp.value) : inp.value;
+                        };
+                        card.appendChild(inp);
+                    }
+                });
+                // transition_duration
+                const tdLbl = document.createElement('label'); tdLbl.textContent = 'transition_duration';
+                const tdInp = document.createElement('input');
+                tdInp.type = 'number'; tdInp.step = 'any'; tdInp.value = step.transition_duration ?? 2;
+                tdInp.oninput = () => { step.transition_duration = parseFloat(tdInp.value); };
+                card.appendChild(tdLbl); card.appendChild(tdInp);
+                // narrative
+                const nLbl = document.createElement('label'); nLbl.textContent = 'narrative (optional)';
+                const nInp = document.createElement('input');
+                nInp.type = 'text'; nInp.value = step.narrative || '';
+                nInp.oninput = () => { step.narrative = nInp.value; };
+                card.appendChild(nLbl); card.appendChild(nInp);
+
+                list.appendChild(card);
+            });
+        }
+        function edBuildScene() {
+            const data = {
+                name: document.getElementById('edName').value || 'Untitled',
+                description: document.getElementById('edDescription').value || '',
+                steps: edSteps.map(s => {
+                    const out = { effect: s.effect, transition: s.transition,
+                                  transition_duration: s.transition_duration ?? 2 };
+                    edParamsForEffect(s.effect).forEach(p => {
+                        if (s[p] != null && s[p] !== '') out[p] = s[p];
+                    });
+                    if (s.narrative) out.narrative = s.narrative;
+                    return out;
+                })
+            };
+            const intro = document.getElementById('edNarrativeIntro').value;
+            if (intro) data.narrative_intro = intro;
+            const rep = document.getElementById('edRepeat').value.trim();
+            if (rep && rep !== '1') {
+                data.repeat = (rep === 'forever' || rep === '0') ? 'forever' : parseInt(rep, 10);
+            }
+            return data;
+        }
+        function edFeedback(msg, color) {
+            const el = document.getElementById('edFeedback');
+            el.style.color = color || '#ffb347';
+            el.textContent = msg;
+        }
+        function edPreview() {
+            const data = edBuildScene();
+            fetch('/apply_scene', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            }).then(r => r.json()).then(resp => {
+                edFeedback(resp.status || resp.error || '', resp.error ? '#ff7373' : '#7dd87d');
+            });
+        }
+        function edSave(overwrite) {
+            const filename = document.getElementById('edFilename').value.trim();
+            if (!filename.endsWith('.json')) {
+                edFeedback('filename must end in .json'); return;
+            }
+            fetch('/save_scene', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filename, data: edBuildScene(), overwrite })
+            }).then(r => r.json().then(j => ({ status: r.status, body: j }))).then(({status, body}) => {
+                if (status === 200) {
+                    edFeedback(`saved ${body.filename}`, '#7dd87d');
+                    loadScenes();
+                } else if (body.exists) {
+                    edFeedback('file exists — click "Save (overwrite)" to replace', '#ffb347');
+                } else if (body.warnings) {
+                    edFeedback('validation: ' + body.warnings.join('; '), '#ff7373');
+                } else {
+                    edFeedback(body.error || 'save failed', '#ff7373');
+                }
+            });
+        }
+
         // Help modal logic
         function showHelp(type) {
             let html = '';
@@ -497,6 +676,7 @@
             startStatusStream();
             startPixelStream();
             document.getElementById('playlistSelect').addEventListener('change', showPlaylistDesc);
+            edAddStep();
             const bs = document.getElementById('brightnessSlider');
             bs.addEventListener('input', () => {
                 document.getElementById('brightnessValue').textContent = bs.value;
