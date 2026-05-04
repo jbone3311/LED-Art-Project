@@ -233,36 +233,50 @@ _STEP_RESERVED = {"effect", "transition", "transition_duration", "narrative", "s
 _TRANSITION_RESERVED = {"effect", "duration", "narrative", "step"}
 
 
-def _effect_kwargs(step):
+def effect_kwargs(step):
+    """Return the step's params with bookkeeping fields stripped out."""
     return {k: v for k, v in step.items() if k not in _STEP_RESERVED}
 
 
-def _transition_kwargs(step):
+def transition_kwargs(step):
     return {k: v for k, v in step.items() if k not in _TRANSITION_RESERVED}
 
 
-def apply_scene(strip, scene_data):
-    """Run a scene synchronously on the calling thread. Honors cancel_event."""
+def estimate_duration(steps):
+    """Best-effort total runtime in seconds for a list of steps."""
+    return int(sum(s.get("duration", 2) + s.get("transition_duration", 0) for s in steps))
+
+
+def apply_scene(strip, scene_data, on_step=None):
+    """Run a scene synchronously on the calling thread. Honors cancel_event.
+
+    `on_step(idx, step)` is invoked (1-based idx) before each step's transition
+    starts, giving callers a chance to update UI/status state.
+    """
     steps = scene_data.get("steps", [])
     if not steps:
         return
     last = scene_data.get("last", steps[0].get("color", [0, 0, 0]))
-    for step in steps:
+    for idx, step in enumerate(steps, start=1):
         if is_cancelled():
             return
-        effect_name = step.get("effect", "solid")
+        if on_step is not None:
+            on_step(idx, step)
         transition_name = step.get("transition", "fade")
-        effect_fn = EFFECTS.get(effect_name, effect_solid)
-        transition_fn = TRANSITIONS.get(transition_name, transition_fade)
         if transition_name != "instant":
             from_color = last
             to_color = step.get("color", step.get("color_start", last))
+            transition_fn = TRANSITIONS.get(transition_name, transition_fade)
             transition_fn(
                 strip,
                 from_color,
                 to_color,
                 step.get("transition_duration", 2),
-                **_transition_kwargs(step),
+                **transition_kwargs(step),
             )
-        effect_fn(strip, **_effect_kwargs(step))
+            if is_cancelled():
+                return
+        effect_name = step.get("effect", "solid")
+        effect_fn = EFFECTS.get(effect_name, effect_solid)
+        effect_fn(strip, **effect_kwargs(step))
         last = step.get("color", step.get("color_end", last))

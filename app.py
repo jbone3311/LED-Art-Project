@@ -58,64 +58,31 @@ def _idle_status():
     }
 
 
-def _estimate_duration(steps):
-    return int(sum(s.get('duration', 2) + s.get('transition_duration', 0) for s in steps))
-
-
 def run_scene_thread(scene_data):
     steps = scene_data.get('steps', [])
-    total_steps = len(steps)
     start_time = time.time()
-    total_duration = _estimate_duration(steps)
-    narrative_intro = scene_data.get('narrative_intro')
-
     with status_lock:
         status.update({
             'running': True,
             'scene': scene_data.get('name', 'Unnamed'),
-            'total_steps': total_steps,
-            'duration': total_duration,
-            'narrative_intro': narrative_intro,
+            'total_steps': len(steps),
+            'duration': effects.estimate_duration(steps),
+            'narrative_intro': scene_data.get('narrative_intro'),
         })
 
-    last = scene_data.get('last', steps[0].get('color', [0, 0, 0]) if steps else [0, 0, 0])
+    def on_step(idx, step):
+        with status_lock:
+            status.update({
+                'step': idx,
+                'current_effect': step.get('effect', 'solid'),
+                'current_transition': step.get('transition', 'fade'),
+                'elapsed': int(time.time() - start_time),
+                'narrative': step.get('narrative'),
+                'step_params': effects.effect_kwargs(step),
+            })
+
     try:
-        for idx, step in enumerate(steps):
-            if effects.is_cancelled():
-                break
-            with status_lock:
-                status.update({
-                    'step': idx + 1,
-                    'current_effect': step.get('effect', 'solid'),
-                    'current_transition': step.get('transition', 'fade'),
-                    'elapsed': int(time.time() - start_time),
-                    'narrative': step.get('narrative'),
-                    'step_params': {
-                        k: v for k, v in step.items()
-                        if k not in ('effect', 'transition', 'transition_duration', 'narrative', 'step')
-                    },
-                })
-
-            transition_name = step.get('transition', 'fade')
-            if transition_name != 'instant':
-                from_color = last
-                to_color = step.get('color', step.get('color_start', last))
-                trans_fn = effects.TRANSITIONS.get(transition_name, effects.transition_fade)
-                trans_fn(
-                    strip,
-                    from_color,
-                    to_color,
-                    step.get('transition_duration', 2),
-                    **effects._transition_kwargs(step),
-                )
-                if effects.is_cancelled():
-                    break
-
-            effect_name = step.get('effect', 'solid')
-            effect_fn = effects.EFFECTS.get(effect_name, effects.effect_solid)
-            effect_fn(strip, **effects._effect_kwargs(step))
-
-            last = step.get('color', step.get('color_end', last))
+        effects.apply_scene(strip, scene_data, on_step=on_step)
     finally:
         with status_lock:
             status.update(_idle_status())
